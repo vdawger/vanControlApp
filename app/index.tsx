@@ -6,10 +6,16 @@ import MessageLog, { Message } from "./components/MessageLog";
 import ProgressBar from "./components/ProgressBar";
 import RelayButton, { RelayButtonProps } from "./components/RelayButton";
 
+type UpdateButtonsWithStatuses = {
+  toggleIpAddress: string;
+  newRelayStatuses: { [s: string]: number };
+};
+
 export default function Index() {
   const [activeIps, setActiveIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [toToggle, setToToggle] = useState<[string, string][]>([]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const addMessage = useCallback((text: string) => {
@@ -26,10 +32,10 @@ export default function Index() {
 
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
 
-  const updateButtonsWithStatuses = (
-    newRelayStatuses: { [s: string]: unknown } | ArrayLike<unknown>,
-    relayIp: string
-  ) => {
+  const updateButtonsWithStatuses = ({
+    toggleIpAddress,
+    newRelayStatuses,
+  }: UpdateButtonsWithStatuses) => {
     setButtons((prevButtons) => {
       const newButtons: RelayButtonProps[] = [...prevButtons];
 
@@ -43,9 +49,8 @@ export default function Index() {
           newButtons.push({
             id: relayId,
             turnedOn: !!value,
-            toggleAddress: relayIp,
-            updateButtonsWithStatuses,
-            addMessage,
+            toggleIpAddress,
+            setToToggle,
           });
         }
       });
@@ -76,11 +81,14 @@ export default function Index() {
     }
   };
 
+  const firstIP = 12;
+  const lastIP = 24;
+
   const scanSubnet = async () => {
     const subnet = "192.168.10.";
     const newActiveIps: string[] = [];
 
-    for (let i = 1; i <= 255; i++) {
+    for (let i = firstIP; i <= lastIP; i++) {
       const ip = `${subnet}${i}`;
       const url = `http://${ip}/status`;
 
@@ -91,7 +99,10 @@ export default function Index() {
         if (response.status === 200) {
           newActiveIps.push(ip);
           const relaysRaw = await response.json();
-          updateButtonsWithStatuses(relaysRaw, ip);
+          updateButtonsWithStatuses({
+            toggleIpAddress: ip,
+            newRelayStatuses: relaysRaw,
+          });
           addMessage(`IP ${ip} responded with 200`);
         }
       } catch (error) {
@@ -101,7 +112,9 @@ export default function Index() {
       // Update every 5 IPs or at the end
       setScanProgress((prev) => {
         // Convert i to a percentage of total IPs (255)
-        const newProgress = Math.round((i / 255) * 100);
+        const newProgress = Math.round(
+          ((i - firstIP) / (lastIP - firstIP)) * 100
+        );
         return newProgress;
       });
     }
@@ -112,6 +125,57 @@ export default function Index() {
     setScanProgress(100);
     await storeLocal("ipsScanned", "255");
   };
+
+  const toggleRelay = async (toggleIpAddress: string, id: string) => {
+    const url = `http://${toggleIpAddress.replace(
+      /\/$/,
+      ""
+    )}/toggleRelay?${encodeURIComponent(id)}=toggle`;
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+      });
+      if (response.status === 200) {
+        const relaysRaw = await response.json();
+        updateButtonsWithStatuses({
+          toggleIpAddress,
+          newRelayStatuses: relaysRaw,
+        });
+      }
+    } catch (error) {
+      console.error(`Error toggling ${id}. Error: ${error}`);
+    }
+  };
+
+  const getStatusUpdates = async () => {
+    for (const ip of activeIps) {
+      const url = `http://${ip}/status`;
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+        });
+        if (response.status === 200) {
+          const relaysRaw = await response.json();
+          updateButtonsWithStatuses({
+            toggleIpAddress: ip,
+            newRelayStatuses: relaysRaw,
+          });
+        }
+      } catch (error) {
+        console.error(`Error scanning ${ip}. Error: ${error}`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (toToggle.length > 0) {
+      toToggle.forEach(([id, toggleIpAddress]) => {
+        toggleRelay(toggleIpAddress, id);
+      });
+      setToToggle([]);
+    }
+  }, [toToggle]);
 
   useEffect(() => {
     if (activeIps.length === 0) {
@@ -128,13 +192,18 @@ export default function Index() {
       });
     }
 
-    if (buttons.length === 0) {
-      getLocal("buttons").then((value) => {
-        if (value) {
-          setButtons(JSON.parse(value));
-        }
-      });
-    }
+    // if (buttons.length === 0) {
+    //   getLocal("buttons").then((value) => {
+    //     if (value) {
+    //       setButtons(JSON.parse(value));
+    //     }
+    //   });
+    // }
+
+    const intervalId = setInterval(getStatusUpdates, 1000);
+
+    // Clean up the interval on component unmount
+    return () => clearInterval(intervalId);
   }, [activeIps, buttons, scanning]);
 
   return (

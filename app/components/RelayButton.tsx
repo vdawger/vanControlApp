@@ -1,32 +1,24 @@
-import React, { useEffect, useState } from "react";
+import React, { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 function idToReadable(str: string): string {
   str = str.replace(/_/g, " "); // Replace underscores with spaces
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(); // Convert to sentence case
 }
-
-type UpdateButtonsWithStatuses = (
-  newRelayStatuses: { [s: string]: unknown },
-  relayIp: string
-) => void;
-
 interface RelayButtonProps {
   id: string;
   turnedOn: boolean;
-  toggleAddress: string;
+  toggleIpAddress: string;
+  setToToggle: Dispatch<SetStateAction<[string, string][]>>;
   unHide?: boolean;
-  updateButtonsWithStatuses: UpdateButtonsWithStatuses;
-  addMessage: (message: string) => void;
 }
 
 const RelayButton: React.FC<RelayButtonProps> = ({
   id,
   turnedOn,
-  toggleAddress,
+  toggleIpAddress,
+  setToToggle,
   unHide,
-  updateButtonsWithStatuses,
-  addMessage,
 }) => {
   const styleIfOn = turnedOn ? styles.relayOff : styles.relayOn;
   const buttonText = idToReadable(id); // Convert ID to readable text
@@ -39,22 +31,7 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   });
 
   const toggleRelay = () => {
-    const url = `http://${toggleAddress.replace(
-      /\/$/,
-      ""
-    )}/toggleRelay?${encodeURIComponent(id)}=toggle`;
-    fetch(url)
-      .then((response) => {
-        console.log(response);
-        return response.json();
-      })
-      .then((newRelayStatuses) => {
-        updateButtonsWithStatuses(newRelayStatuses, id);
-      })
-      .catch((error) => {
-        console.error(`Error toggling ${id}. Error: ${error}`);
-        addMessage(`Error toggling ${id}. Error: ${error}`);
-      });
+    setToToggle((prev) => [...prev, [id, toggleIpAddress]]);
   };
 
   if (hidden) return null;
