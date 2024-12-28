@@ -6,6 +6,7 @@ import DraggableFlatList, {
   RenderItemParams,
 } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ButtonSettingsModal } from "./components/ButtonSettingsModal";
 import { DragIcon } from "./components/DragIcon";
 import MessageLog, { Message } from "./components/MessageLog";
 import ProgressBar from "./components/ProgressBar";
@@ -55,6 +56,7 @@ export default function Index() {
             uuid,
             turnedOn: !!value,
             toggleIpAddress,
+            hidden: false,
           });
         }
       });
@@ -178,10 +180,27 @@ export default function Index() {
     setButtons(data);
   };
 
+  const hideButtonRow = (uuid: string) => {
+    setButtons((prevButtons) => {
+      return prevButtons.map((button) => {
+        if (button.uuid === uuid) {
+          return { ...button, hidden: true };
+        }
+        return button;
+      });
+    });
+  };
+
   const renderButton = ({ item, drag }: RenderItemParams<RelayButtonProps>) => {
+    if (item.hidden) return null;
     return (
       <View style={styles.buttonRow}>
         <DragIcon drag={drag} />
+        <ButtonSettingsModal
+          uuid={item.uuid}
+          handleHide={hideButtonRow}
+          modalTitle={item.id}
+        />
         <RelayButton
           {...item}
           addMessage={addMessage}

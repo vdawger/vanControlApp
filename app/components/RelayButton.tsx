@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { UpdateButtonsWithStatuses } from "..";
 
@@ -17,27 +17,18 @@ interface RelayButtonProps {
   }: UpdateButtonsWithStatuses) => void;
   toggleRelay?: () => void;
   addMessage?: (message: string) => void;
-  unHide?: boolean;
+  hidden?: boolean;
 }
 
 const RelayButton: React.FC<RelayButtonProps> = ({
   id,
   turnedOn,
   toggleIpAddress,
-  uuid,
   updateButtonsWithStatuses,
   addMessage,
-  unHide,
 }) => {
   const styleIfOn = turnedOn ? styles.relayOff : styles.relayOn;
   const buttonText = idToReadable(id); // Convert ID to readable text
-  const [hidden, setHidden] = useState(false);
-
-  useEffect(() => {
-    if (unHide) {
-      setHidden(false);
-    }
-  });
 
   const toggleRelay = async () => {
     const url = `http://${toggleIpAddress.replace(
@@ -64,15 +55,12 @@ const RelayButton: React.FC<RelayButtonProps> = ({
     }
   };
 
-  if (hidden) return null;
-
   return (
     <TouchableOpacity
       style={[styles.button, styleIfOn, styles.expand]}
       onPress={toggleRelay}
     >
       <Text style={[styles.buttonText]}>{buttonText}</Text>
-      <Text style={[styles.small]}>{uuid}</Text>
     </TouchableOpacity>
   );
 };
@@ -103,10 +91,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
-  },
-  small: {
-    fontSize: 10,
     color: "#fff",
   },
 });
