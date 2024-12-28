@@ -8,7 +8,7 @@ import DraggableFlatList, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ButtonSettingsModal } from "./components/ButtonSettingsModal";
 import { DragIcon } from "./components/DragIcon";
-import MessageLog, { Message } from "./components/MessageLog";
+import { Message, MessageLogModal } from "./components/MessageLogModal";
 import ProgressBar from "./components/ProgressBar";
 import RelayButton, {
   idToReadable,
@@ -215,20 +215,16 @@ export default function Index() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }}>
-        <View style={{ flex: 0.75 }}>
-          <ProgressBar progress={scanProgress} />
-          <DraggableFlatList
-            data={buttons}
-            renderItem={renderButton}
-            onDragEnd={onDragEnd}
-            scrollEnabled={true}
-            keyExtractor={(item) => item.uuid}
-          />
-        </View>
-        <View style={[styles.messages, { flex: 0.25 }]}>
-          <MessageLog messages={messages} />
-        </View>
+      <View style={{ height: "100%", paddingBottom: 50 }}>
+        {scanProgress < 100 && <ProgressBar progress={scanProgress} />}
+        <DraggableFlatList
+          data={buttons}
+          renderItem={renderButton}
+          onDragEnd={onDragEnd}
+          scrollEnabled={true}
+          keyExtractor={(item) => item.uuid}
+        />
+        <MessageLogModal messages={messages} scanProgress={scanProgress} />
       </View>
     </GestureHandlerRootView>
   );
