@@ -95,5 +95,6 @@ const styles = StyleSheet.create({
   },
 });
 
+export { idToReadable };
 export type { RelayButtonProps };
 export default RelayButton;

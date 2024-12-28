@@ -10,7 +10,10 @@ import { ButtonSettingsModal } from "./components/ButtonSettingsModal";
 import { DragIcon } from "./components/DragIcon";
 import MessageLog, { Message } from "./components/MessageLog";
 import ProgressBar from "./components/ProgressBar";
-import RelayButton, { RelayButtonProps } from "./components/RelayButton";
+import RelayButton, {
+  idToReadable,
+  RelayButtonProps,
+} from "./components/RelayButton";
 
 type UpdateButtonsWithStatuses = {
   toggleIpAddress: string;
@@ -199,7 +202,7 @@ export default function Index() {
         <ButtonSettingsModal
           uuid={item.uuid}
           handleHide={hideButtonRow}
-          modalTitle={item.id}
+          modalTitle={idToReadable(item.id)}
         />
         <RelayButton
           {...item}

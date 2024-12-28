@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   danger: {
-    backgroundColor: "black",
+    backgroundColor: "red",
   },
   cancel: {
     backgroundColor: "grey",
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
-    backgroundColor: "blue", // transparent color
+    backgroundColor: "rgba(0, 0, 0, 0.5)", // transparent color how do i make this transparent?
   },
   modalView: {
     backgroundColor: "black",
