@@ -15,7 +15,6 @@ export default function Index() {
   const [activeIps, setActiveIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [toToggle, setToToggle] = useState<[string, string][]>([]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const addMessage = useCallback((text: string) => {
@@ -50,7 +49,6 @@ export default function Index() {
             id: relayId,
             turnedOn: !!value,
             toggleIpAddress,
-            setToToggle,
           });
         }
       });
@@ -126,27 +124,6 @@ export default function Index() {
     await storeLocal("ipsScanned", "255");
   };
 
-  const toggleRelay = async (toggleIpAddress: string, id: string) => {
-    const url = `http://${toggleIpAddress.replace(
-      /\/$/,
-      ""
-    )}/toggleRelay?${encodeURIComponent(id)}=toggle`;
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-      });
-      if (response.status === 200) {
-        const relaysRaw = await response.json();
-        updateButtonsWithStatuses({
-          toggleIpAddress,
-          newRelayStatuses: relaysRaw,
-        });
-      }
-    } catch (error) {
-      console.error(`Error toggling ${id}. Error: ${error}`);
-    }
-  };
-
   const getStatusUpdates = async () => {
     for (const ip of activeIps) {
       const url = `http://${ip}/status`;
@@ -169,20 +146,12 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (toToggle.length > 0) {
-      toToggle.forEach(([id, toggleIpAddress]) => {
-        toggleRelay(toggleIpAddress, id);
-      });
-      setToToggle([]);
-    }
-  }, [toToggle]);
-
-  useEffect(() => {
     if (activeIps.length === 0) {
       getLocal("activeIps").then((value) => {
         if (value) {
           setActiveIps(JSON.parse(value));
-          addMessage(`Loaded active IPs: ${value}`);
+          setScanProgress(100);
+          addMessage(`Remembered active IPs: ${value}`);
         } else {
           if (!scanProgress && !scanning) {
             setScanning(true);
@@ -192,19 +161,37 @@ export default function Index() {
       });
     }
 
-    // if (buttons.length === 0) {
-    //   getLocal("buttons").then((value) => {
-    //     if (value) {
-    //       setButtons(JSON.parse(value));
-    //     }
-    //   });
-    // }
-
     const intervalId = setInterval(getStatusUpdates, 1000);
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
   }, [activeIps, buttons, scanning]);
+
+  const moveButtonUp = (id: string) => {
+    setButtons((currentButtons) => {
+      const index = currentButtons.findIndex((button) => button.id === id);
+      if (index > 0) {
+        const newButtons = [...currentButtons];
+        const [removed] = newButtons.splice(index, 1);
+        newButtons.splice(index - 1, 0, removed);
+        return newButtons;
+      }
+      return currentButtons;
+    });
+  };
+
+  const moveButtonDown = (id: string) => {
+    setButtons((currentButtons) => {
+      const index = currentButtons.findIndex((button) => button.id === id);
+      if (index < currentButtons.length - 1) {
+        const newButtons = [...currentButtons];
+        const [removed] = newButtons.splice(index, 1);
+        newButtons.splice(index + 1, 0, removed);
+        return newButtons;
+      }
+      return currentButtons;
+    });
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -213,7 +200,19 @@ export default function Index() {
           <ProgressBar progress={scanProgress} />
           <FlatList
             data={buttons}
-            renderItem={({ item }) => <RelayButton {...item} />}
+            renderItem={({ item, index }) => (
+              <RelayButton
+                {...item}
+                updateButtonsWithStatuses={updateButtonsWithStatuses}
+                moveUp={index > 0 ? () => moveButtonUp(item.id) : undefined}
+                moveDown={
+                  index < buttons.length - 1
+                    ? () => moveButtonDown(item.id)
+                    : undefined
+                }
+                addMessage={addMessage}
+              />
+            )}
             keyExtractor={(item) => item.id.toString()}
           />
         </View>
@@ -231,3 +230,5 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 });
+
+export type { UpdateButtonsWithStatuses };
