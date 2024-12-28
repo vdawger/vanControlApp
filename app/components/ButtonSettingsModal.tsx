@@ -11,12 +11,14 @@ import {
 interface ButtonSettingsModalProps {
   uuid: string;
   handleHide: (uuid: string) => void;
+  handleReverseToggle: (uuid: string) => void;
   modalTitle: string;
 }
 
 export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
   uuid,
   handleHide,
+  handleReverseToggle,
   modalTitle,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -39,6 +41,18 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <Text style={styles.titleText}>{modalTitle}</Text>
+            <View style={styles.buttonView}>
+              <TouchableHighlight
+                style={[styles.button, styles.primary]}
+                onPress={(e) => {
+                  handleReverseToggle(uuid);
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[styles.text]}>Reverse On/Off</Text>
+              </TouchableHighlight>
+            </View>
+
             <View style={styles.buttonView}>
               <TouchableHighlight
                 style={[styles.button, styles.danger]}
@@ -83,6 +97,9 @@ const styles = StyleSheet.create({
   },
   danger: {
     backgroundColor: "red",
+  },
+  primary: {
+    backgroundColor: "blue",
   },
   cancel: {
     backgroundColor: "grey",

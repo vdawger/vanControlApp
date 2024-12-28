@@ -16,7 +16,7 @@ import RelayButton, {
 } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
 
-type UpdateButtonsWithStatuses = {
+type UpdateButtonsWithStatusesProps = {
   toggleIpAddress: string;
   newRelayStatuses: { [s: string]: number };
 };
@@ -44,7 +44,7 @@ export default function Index() {
   const updateButtonsWithStatuses = ({
     toggleIpAddress,
     newRelayStatuses,
-  }: UpdateButtonsWithStatuses) => {
+  }: UpdateButtonsWithStatusesProps) => {
     setButtons((prevButtons) => {
       const newButtons: RelayButtonProps[] = [...prevButtons];
 
@@ -61,6 +61,7 @@ export default function Index() {
             uuid,
             turnedOn: !!value,
             toggleIpAddress,
+            reversed: false,
             hidden: false,
           });
         }
@@ -180,6 +181,15 @@ export default function Index() {
     }
   };
 
+  const handleReverseToggle = (uuid: string) => {
+    setButtons((prevButtons) => {
+      return prevButtons.map((button) => {
+        if (button.uuid !== uuid) return button;
+        return { ...button, reversed: !button.reversed };
+      });
+    });
+  };
+
   // Load data from storage
   useEffect(() => {
     if (activeIps.length === 0) {
@@ -226,6 +236,7 @@ export default function Index() {
         <ButtonSettingsModal
           uuid={item.uuid}
           handleHide={hideButtonRow}
+          handleReverseToggle={handleReverseToggle}
           modalTitle={idToReadable(item.id)}
         />
         <RelayButton
@@ -273,4 +284,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export type { UpdateButtonsWithStatuses };
+export type { UpdateButtonsWithStatusesProps };

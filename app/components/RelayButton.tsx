@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
-import { UpdateButtonsWithStatuses } from "..";
+import { UpdateButtonsWithStatusesProps } from "..";
 
 function idToReadable(str: string): string {
   str = str.replace(/_/g, " "); // Replace underscores with spaces
@@ -11,10 +11,11 @@ interface RelayButtonProps {
   turnedOn: boolean;
   toggleIpAddress: string;
   uuid: string;
+  reversed: boolean;
   updateButtonsWithStatuses?: ({
     toggleIpAddress,
     newRelayStatuses,
-  }: UpdateButtonsWithStatuses) => void;
+  }: UpdateButtonsWithStatusesProps) => void;
   toggleRelay?: () => void;
   addMessage?: (message: string) => void;
   hidden?: boolean;
@@ -24,10 +25,13 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   id,
   turnedOn,
   toggleIpAddress,
+  reversed,
   updateButtonsWithStatuses,
   addMessage,
 }) => {
-  const styleIfOn = turnedOn ? styles.relayOff : styles.relayOn;
+  const reversableTurnedOn = reversed ? !turnedOn : turnedOn;
+
+  const styleIfOn = reversableTurnedOn ? styles.relayOff : styles.relayOn;
   const buttonText = idToReadable(id); // Convert ID to readable text
 
   const toggleRelay = async () => {
