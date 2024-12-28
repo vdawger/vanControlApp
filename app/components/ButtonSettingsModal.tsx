@@ -27,7 +27,7 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
         style={{ width: 50 }}
         onPress={(e) => setModalVisible(true)}
       >
-        <Ionicons name="settings-outline" size={40} color="black" />
+        <Ionicons name="settings-outline" size={40} color="white" />
       </TouchableHighlight>
 
       <Modal

@@ -31,28 +31,30 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   const buttonText = idToReadable(id); // Convert ID to readable text
 
   const toggleRelay = async () => {
-    const url = `http://${toggleIpAddress.replace(
-      /\/$/,
-      ""
-    )}/toggleRelay?${encodeURIComponent(id)}=toggle`;
-    try {
-      const response = await fetch(url, {
-        method: "GET",
-      });
-      if (response.status === 200) {
-        const relaysRaw = await response.json();
-        if (updateButtonsWithStatuses) {
-          updateButtonsWithStatuses({
-            toggleIpAddress,
-            newRelayStatuses: relaysRaw,
-          });
-        }
-      }
-    } catch (error) {
-      if (addMessage) {
-        addMessage(`Error toggling ${id}. Error: ${error}`);
-      }
-    }
+    const url = `http://${toggleIpAddress}/toggleRelay?${encodeURIComponent(
+      id
+    )}=toggle`;
+    fetch(url).then((response) => {
+      response
+        .json()
+        .then((relaysRaw) => {
+          if (updateButtonsWithStatuses) {
+            updateButtonsWithStatuses({
+              toggleIpAddress,
+              newRelayStatuses: relaysRaw,
+            });
+          }
+
+          if (addMessage) {
+            addMessage(`Toggled ${id}, got updates.`);
+          }
+        })
+        .catch((error) => {
+          if (addMessage) {
+            addMessage(`Error toggling ${id}. Error: ${error}`);
+          }
+        });
+    });
   };
 
   return (

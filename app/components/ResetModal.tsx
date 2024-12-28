@@ -1,41 +1,29 @@
-import FontAwesome from "@expo/vector-icons/FontAwesome";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { FC, useState } from "react";
 import {
-  FlatList,
   Modal,
   StyleSheet,
   Text,
   TouchableHighlight,
   View,
 } from "react-native";
-import ProgressBar from "./ProgressBar";
 
-interface Message {
-  id: string;
-  text: string;
+interface ResetModal {
+  handleReset: () => void;
 }
 
-interface MessageLogModalProps {
-  messages: Message[];
-  scanProgress: number;
-}
-
-export const MessageLogModal: FC<MessageLogModalProps> = ({
-  messages,
-  scanProgress,
-}) => {
+export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   return (
     <View>
       <TouchableHighlight
-        style={[styles.button, styles.primary]}
+        style={[styles.button, styles.danger]}
         onPress={(e) => setModalVisible(true)}
       >
         <View style={{ flexDirection: "row" }}>
-          <Text style={{ color: "white" }}>{messages.length}</Text>
-          <Text style={{ color: "white" }}> messages </Text>
-          <FontAwesome name="stack-overflow" size={24} color="white" />
+          <Text style={{ color: "white" }}>Reset Hidden Buttons </Text>
+          <MaterialIcons name="lock-reset" size={24} color="white" />
         </View>
       </TouchableHighlight>
 
@@ -47,26 +35,31 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
       >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
-            <Text style={styles.titleText}>Network Scanned</Text>
-            <ProgressBar progress={scanProgress} />
-            <Text style={styles.titleText}>Message Log</Text>
-            <FlatList
-              data={messages}
-              renderItem={({ item }) => (
-                <View style={styles.message}>
-                  <Text style={styles.text}>{item.text}</Text>
-                </View>
-              )}
-              keyExtractor={(item) => item.id}
-              inverted // Inverts the list so new messages appear at the top
-              style={styles.list}
-            />
+            <Text style={styles.titleText}>Reset Hidden Buttons?</Text>
+
+            <Text style={styles.text}>
+              This will reset all hidden buttons to be visible and require a
+              network rescan.
+            </Text>
+
+            <View style={styles.buttonView}>
+              <TouchableHighlight
+                style={[styles.button, styles.danger]}
+                onPress={(e) => {
+                  handleReset();
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[styles.text]}>Reset</Text>
+              </TouchableHighlight>
+            </View>
+
             <View style={styles.buttonView}>
               <TouchableHighlight
                 style={[styles.button, styles.cancel]}
                 onPress={(e) => setModalVisible(false)}
               >
-                <Text style={[styles.text]}>Done</Text>
+                <Text style={[styles.text]}>Cancel</Text>
               </TouchableHighlight>
             </View>
           </View>
@@ -88,16 +81,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
+    borderColor: "black",
     borderWidth: 1,
     flexDirection: "row",
     marginVertical: 5,
     alignSelf: "center",
   },
+  danger: {
+    backgroundColor: "red",
+  },
   cancel: {
     backgroundColor: "grey",
-  },
-  primary: {
-    backgroundColor: "blue",
   },
   text: {
     paddingHorizontal: 5,
@@ -122,21 +116,4 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 10,
   },
-  container: {
-    flex: 1,
-    backgroundColor: "black",
-  },
-  list: {
-    height: 200,
-    marginBottom: 10,
-  },
-  message: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "grey",
-    color: "white",
-    fontSize: 12,
-  },
 });
-
-export type { Message };

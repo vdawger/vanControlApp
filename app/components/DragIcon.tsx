@@ -14,7 +14,7 @@ export const DragIcon: React.FC<DragIconProps> = ({ drag }) => {
         alignContent: "center",
       }}
     >
-      <MaterialCommunityIcons name="drag" size={40} color="black" />
+      <MaterialCommunityIcons name="drag" size={40} color="white" />
     </TouchableHighlight>
   );
 };

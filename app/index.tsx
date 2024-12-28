@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import DraggableFlatList, {
   DragEndParams,
@@ -14,6 +14,7 @@ import RelayButton, {
   idToReadable,
   RelayButtonProps,
 } from "./components/RelayButton";
+import { ResetModal } from "./components/ResetModal";
 
 type UpdateButtonsWithStatuses = {
   toggleIpAddress: string;
@@ -27,7 +28,8 @@ export default function Index() {
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const addMessage = useCallback((text: string) => {
+  const addMessage = (text: string) => {
+    console.log(text, messages);
     setMessages((prevMessages) => {
       const newMessage = {
         id: Date.now().toString(), // Simple unique ID
@@ -37,7 +39,7 @@ export default function Index() {
       // Prepend new message and keep only the latest 10 messages
       return [newMessage, ...prevMessages].slice(0, 10);
     });
-  }, []);
+  };
 
   const updateButtonsWithStatuses = ({
     toggleIpAddress,
@@ -90,12 +92,30 @@ export default function Index() {
     }
   };
 
+  const clearLocalStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      addMessage("Local storage cleared successfully");
+    } catch (error) {
+      addMessage(`Error clearing local storage: ${error}`);
+    }
+  };
+
+  const handleReset = async () => {
+    clearLocalStorage();
+    setActiveIps([]);
+    setButtons([]);
+    setScanProgress(0);
+    setScanning(false);
+  };
+
   const firstIP = 12;
   const lastIP = 24;
 
   const scanSubnet = async () => {
     const subnet = "192.168.10.";
     const newActiveIps: string[] = [];
+    const failedIps = [];
 
     for (let i = firstIP; i <= lastIP; i++) {
       const ip = `${subnet}${i}`;
@@ -112,10 +132,14 @@ export default function Index() {
             toggleIpAddress: ip,
             newRelayStatuses: relaysRaw,
           });
-          addMessage(`IP ${ip} responded with 200`);
+          addMessage(`IP ${ip} is a board`);
         }
       } catch (error) {
-        console.error(`Error scanning ${ip}. Error: ${error}`);
+        failedIps.push(ip);
+      }
+
+      if (failedIps.length % 5 === 0 || i === lastIP) {
+        addMessage(`No response from ${failedIps.join(", ")}`);
       }
 
       // Update every 5 IPs or at the end
@@ -215,7 +239,9 @@ export default function Index() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ height: "100%", paddingBottom: 50 }}>
+      <View
+        style={{ height: "100%", paddingBottom: 100, backgroundColor: "black" }}
+      >
         {scanProgress < 100 && <ProgressBar progress={scanProgress} />}
         <DraggableFlatList
           data={buttons}
@@ -225,6 +251,7 @@ export default function Index() {
           keyExtractor={(item) => item.uuid}
         />
         <MessageLogModal messages={messages} scanProgress={scanProgress} />
+        <ResetModal handleReset={handleReset} />
       </View>
     </GestureHandlerRootView>
   );
