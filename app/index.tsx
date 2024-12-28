@@ -1,7 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import DraggableFlatList, {
+  DragEndParams,
+  RenderItemParams,
+} from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { DragIcon } from "./components/DragIcon";
 import MessageLog, { Message } from "./components/MessageLog";
 import ProgressBar from "./components/ProgressBar";
 import RelayButton, { RelayButtonProps } from "./components/RelayButton";
@@ -15,6 +20,7 @@ export default function Index() {
   const [activeIps, setActiveIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const addMessage = useCallback((text: string) => {
@@ -29,8 +35,6 @@ export default function Index() {
     });
   }, []);
 
-  const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
-
   const updateButtonsWithStatuses = ({
     toggleIpAddress,
     newRelayStatuses,
@@ -38,15 +42,17 @@ export default function Index() {
     setButtons((prevButtons) => {
       const newButtons: RelayButtonProps[] = [...prevButtons];
 
-      Object.entries(newRelayStatuses).forEach(([relayId, value]) => {
+      Object.entries(newRelayStatuses).forEach(([relayId, value], index) => {
         const existingButton = newButtons.find(
           (button) => button.id === relayId
         );
         if (existingButton) {
           existingButton.turnedOn = !!value;
         } else {
+          const uuid = toggleIpAddress + "-" + index.toString();
           newButtons.push({
             id: relayId,
+            uuid,
             turnedOn: !!value,
             toggleIpAddress,
           });
@@ -145,6 +151,7 @@ export default function Index() {
     }
   };
 
+  // Load data from storage
   useEffect(() => {
     if (activeIps.length === 0) {
       getLocal("activeIps").then((value) => {
@@ -167,30 +174,21 @@ export default function Index() {
     return () => clearInterval(intervalId);
   }, [activeIps, buttons, scanning]);
 
-  const moveButtonUp = (id: string) => {
-    setButtons((currentButtons) => {
-      const index = currentButtons.findIndex((button) => button.id === id);
-      if (index > 0) {
-        const newButtons = [...currentButtons];
-        const [removed] = newButtons.splice(index, 1);
-        newButtons.splice(index - 1, 0, removed);
-        return newButtons;
-      }
-      return currentButtons;
-    });
+  const onDragEnd = ({ data }: DragEndParams<RelayButtonProps>) => {
+    setButtons(data);
   };
 
-  const moveButtonDown = (id: string) => {
-    setButtons((currentButtons) => {
-      const index = currentButtons.findIndex((button) => button.id === id);
-      if (index < currentButtons.length - 1) {
-        const newButtons = [...currentButtons];
-        const [removed] = newButtons.splice(index, 1);
-        newButtons.splice(index + 1, 0, removed);
-        return newButtons;
-      }
-      return currentButtons;
-    });
+  const renderButton = ({ item, drag }: RenderItemParams<RelayButtonProps>) => {
+    return (
+      <View style={styles.buttonRow}>
+        <DragIcon drag={drag} />
+        <RelayButton
+          {...item}
+          addMessage={addMessage}
+          updateButtonsWithStatuses={updateButtonsWithStatuses}
+        />
+      </View>
+    );
   };
 
   return (
@@ -198,22 +196,12 @@ export default function Index() {
       <View style={{ flex: 1 }}>
         <View style={{ flex: 0.75 }}>
           <ProgressBar progress={scanProgress} />
-          <FlatList
+          <DraggableFlatList
             data={buttons}
-            renderItem={({ item, index }) => (
-              <RelayButton
-                {...item}
-                updateButtonsWithStatuses={updateButtonsWithStatuses}
-                moveUp={index > 0 ? () => moveButtonUp(item.id) : undefined}
-                moveDown={
-                  index < buttons.length - 1
-                    ? () => moveButtonDown(item.id)
-                    : undefined
-                }
-                addMessage={addMessage}
-              />
-            )}
-            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderButton}
+            onDragEnd={onDragEnd}
+            scrollEnabled={true}
+            keyExtractor={(item) => item.uuid}
           />
         </View>
         <View style={[styles.messages, { flex: 0.25 }]}>
@@ -228,6 +216,15 @@ const styles = StyleSheet.create({
   messages: {
     flex: 1,
     marginBottom: 10,
+  },
+  buttonRow: {
+    width: "100%",
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  expand: {
+    flex: 1,
   },
 });
 

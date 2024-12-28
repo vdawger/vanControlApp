@@ -1,6 +1,5 @@
-import AntDesign from "@expo/vector-icons/AntDesign";
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { UpdateButtonsWithStatuses } from "..";
 
 function idToReadable(str: string): string {
@@ -11,12 +10,11 @@ interface RelayButtonProps {
   id: string;
   turnedOn: boolean;
   toggleIpAddress: string;
+  uuid: string;
   updateButtonsWithStatuses?: ({
     toggleIpAddress,
     newRelayStatuses,
   }: UpdateButtonsWithStatuses) => void;
-  moveUp?: () => void;
-  moveDown?: () => void;
   toggleRelay?: () => void;
   addMessage?: (message: string) => void;
   unHide?: boolean;
@@ -26,9 +24,8 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   id,
   turnedOn,
   toggleIpAddress,
+  uuid,
   updateButtonsWithStatuses,
-  moveUp,
-  moveDown,
   addMessage,
   unHide,
 }) => {
@@ -70,51 +67,17 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   if (hidden) return null;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={[styles.button, styles.iconButton]}
-          onPress={moveUp}
-          disabled={!moveUp}
-        >
-          <AntDesign
-            name="arrowup"
-            size={24}
-            color={!moveUp ? "black" : "white"}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styles.iconButton]}
-          onPress={moveDown}
-          disabled={!moveDown}
-        >
-          <AntDesign
-            name="arrowdown"
-            size={24}
-            color={!moveDown ? "black" : "white"}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, styleIfOn, styles.expand]}
-          onPress={toggleRelay}
-        >
-          <Text style={[styles.buttonText]}>{buttonText}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <TouchableOpacity
+      style={[styles.button, styleIfOn, styles.expand]}
+      onPress={toggleRelay}
+    >
+      <Text style={[styles.buttonText]}>{buttonText}</Text>
+      <Text style={[styles.small]}>{uuid}</Text>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   expand: {
     flex: 1,
   },
@@ -140,6 +103,10 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#fff",
+  },
+  small: {
+    fontSize: 10,
     color: "#fff",
   },
 });
