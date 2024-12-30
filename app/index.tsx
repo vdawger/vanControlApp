@@ -158,6 +158,7 @@ export default function Index() {
   };
 
   const getStatusUpdates = async () => {
+    addMessage("Checking statuses for: " + activeIps.join(", "));
     for (const ip of activeIps) {
       const url = `http://${ip}/status`;
 
