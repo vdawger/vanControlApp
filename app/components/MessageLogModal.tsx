@@ -12,6 +12,7 @@ import ProgressBar from "./ProgressBar";
 
 interface Message {
   id: string;
+  time: string;
   text: string;
 }
 
@@ -54,7 +55,9 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
               data={messages}
               renderItem={({ item }) => (
                 <View style={styles.message}>
-                  <Text style={styles.text}>{item.text}</Text>
+                  <Text
+                    style={styles.text}
+                  >{`${item.time}: ${item.text}`}</Text>
                 </View>
               )}
               keyExtractor={(item) => item.id}

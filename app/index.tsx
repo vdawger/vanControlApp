@@ -31,11 +31,18 @@ export default function Index() {
   const addMessage = (text: string) => {
     setMessages((prevMessages) => {
       const newMessage = {
-        id: Date.now().toString(), // Simple unique ID
+        id: `${Date.now().toString()}-${Math.random()}`,
+        time: new Date().toLocaleTimeString(),
         text,
       };
 
-      // Prepend new message and keep only the latest 10 messages
+      // if last message in log is the same, only update time:
+      const lastMessage = prevMessages[0];
+      if (lastMessage && lastMessage.text === text) {
+        return [newMessage, ...prevMessages.slice(1)];
+      }
+
+      // If no existing message, simply add new message
       return [newMessage, ...prevMessages].slice(0, 10);
     });
   };
@@ -108,15 +115,15 @@ export default function Index() {
     setScanning(false);
   };
 
-  const firstIP = 12;
-  const lastIP = 24;
+  const FIRST_IP = 11;
+  const LAST_IP = 24;
 
   const scanSubnet = async () => {
     const subnet = "192.168.10.";
     const newActiveIps: string[] = [];
     const failedIps = [];
 
-    for (let i = firstIP; i <= lastIP; i++) {
+    for (let i = FIRST_IP; i <= LAST_IP; i++) {
       const ip = `${subnet}${i}`;
       const url = `http://${ip}/status`;
 
@@ -137,7 +144,7 @@ export default function Index() {
         failedIps.push(ip);
       }
 
-      if (failedIps.length % 5 === 0 || i === lastIP) {
+      if (failedIps.length % 5 === 0 || i === LAST_IP) {
         addMessage(`No response from ${failedIps.join(", ")}`);
       }
 
@@ -145,7 +152,7 @@ export default function Index() {
       setScanProgress((prev) => {
         // Convert i to a percentage of total IPs (255)
         const newProgress = Math.round(
-          ((i - firstIP) / (lastIP - firstIP)) * 100
+          ((i - FIRST_IP) / (LAST_IP - FIRST_IP)) * 100
         );
         return newProgress;
       });
@@ -249,7 +256,11 @@ export default function Index() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View
-        style={{ height: "100%", paddingBottom: 100, backgroundColor: "black" }}
+        style={{
+          height: "100%",
+          paddingBottom: scanProgress ? 120 : 100,
+          backgroundColor: "black",
+        }}
       >
         {scanProgress < 100 && <ProgressBar progress={scanProgress} />}
         <DraggableFlatList
