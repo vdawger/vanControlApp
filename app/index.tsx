@@ -29,7 +29,6 @@ export default function Index() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const addMessage = (text: string) => {
-    console.log(text, messages);
     setMessages((prevMessages) => {
       const newMessage = {
         id: Date.now().toString(), // Simple unique ID
@@ -66,14 +65,13 @@ export default function Index() {
           });
         }
       });
-      storeLocal("buttons", JSON.stringify(newButtons));
       return newButtons;
     });
   };
 
-  const storeLocal = async (key: string, value: string) => {
+  const storeLocal = async (key: string, value: any) => {
     try {
-      await AsyncStorage.setItem(key, value);
+      await AsyncStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
       addMessage(`Error saving data ${error}`);
     }
@@ -83,7 +81,7 @@ export default function Index() {
     try {
       const value = await AsyncStorage.getItem(key);
       if (value !== null) {
-        return value;
+        return JSON.parse(value);
       } else {
         return null;
       }
@@ -154,10 +152,9 @@ export default function Index() {
     }
 
     setActiveIps(newActiveIps);
-    await storeLocal("activeIps", JSON.stringify(newActiveIps));
+    await storeLocal("activeIps", newActiveIps);
     setScanning(false);
     setScanProgress(100);
-    await storeLocal("ipsScanned", "255");
   };
 
   const getStatusUpdates = async () => {
@@ -176,7 +173,7 @@ export default function Index() {
           });
         }
       } catch (error) {
-        console.error(`Error scanning ${ip}. Error: ${error}`);
+        addMessage(`Error scanning ${ip}. Error: ${error}`);
       }
     }
   };
@@ -194,7 +191,7 @@ export default function Index() {
   useEffect(() => {
     if (activeIps.length === 0) {
       getLocal("activeIps").then((value) => {
-        if (value) {
+        if (value && value.length > 0) {
           setActiveIps(JSON.parse(value));
           setScanProgress(100);
           addMessage(`Remembered active IPs: ${value}`);
