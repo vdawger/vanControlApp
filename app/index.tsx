@@ -79,14 +79,17 @@ export default function Index() {
   const storeLocal = async (key: string, value: any) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(value));
+      addMessage(`${key} saved: ${JSON.stringify(value)}`);
     } catch (error) {
-      addMessage(`Error saving data ${error}`);
+      addMessage(`Error saving ${key} data ${error}`);
     }
   };
 
   const getLocal = async (key: string) => {
     try {
+      addMessage(`Retrieving data for ${key}`);
       const value = await AsyncStorage.getItem(key);
+      addMessage(`Retrieved data for ${key}: ${value}`);
       if (value !== null) {
         return JSON.parse(value);
       } else {
