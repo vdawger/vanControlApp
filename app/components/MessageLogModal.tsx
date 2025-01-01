@@ -8,13 +8,8 @@ import {
   TouchableHighlight,
   View,
 } from "react-native";
+import { Message } from "../hooks/useMessages";
 import ProgressBar from "./ProgressBar";
-
-interface Message {
-  id: string;
-  time: string;
-  text: string;
-}
 
 interface MessageLogModalProps {
   messages: Message[];
@@ -130,7 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: "black",
   },
   list: {
-    height: 200,
+    height: 400,
     marginBottom: 10,
   },
   message: {

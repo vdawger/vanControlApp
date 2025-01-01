@@ -29,5 +29,19 @@ To learn more about developing your project with Expo, look at the following res
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
 ## Launch Builds:
+### IOS
 to open in xcode:
 `xed ios`
+https://docs.expo.dev/guides/local-app-production/
+
+### Android
+With device plugged in:
+`npx expo run:android --variant release`
+
+## Android Get APK to read non HTTPS traffic:
+add to android/app/src/main/AndroidManifest.xml
+```
+android:usesCleartextTraffic="true"
+
+like this:
+<application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true" android:usesCleartextTraffic="true">

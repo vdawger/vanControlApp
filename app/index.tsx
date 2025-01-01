@@ -87,9 +87,7 @@ export default function Index() {
 
   const getLocal = async (key: string) => {
     try {
-      addMessage(`Retrieving data for ${key}`);
       const value = await AsyncStorage.getItem(key);
-      addMessage(`Retrieved data for ${key}: ${value}`);
       if (value !== null) {
         return JSON.parse(value);
       } else {
@@ -111,11 +109,11 @@ export default function Index() {
   };
 
   const handleReset = async () => {
-    clearLocalStorage();
+    setScanning(false);
+    setScanProgress(0);
     setActiveIps([]);
     setButtons([]);
-    setScanProgress(0);
-    setScanning(false);
+    clearLocalStorage();
   };
 
   const FIRST_IP = 11;
@@ -144,6 +142,7 @@ export default function Index() {
           addMessage(`IP ${ip} is a board`);
         }
       } catch (error) {
+        addMessage(`Error scanning ${ip}. Error: ${error}`);
         failedIps.push(ip);
       }
 
@@ -207,6 +206,7 @@ export default function Index() {
           setScanProgress(100);
           addMessage(`Remembered active IPs: ${value}`);
         } else {
+          addMessage(`No active IPs stored: ${scanProgress} ${scanning}`);
           if (!scanProgress && !scanning) {
             setScanning(true);
             scanSubnet();
