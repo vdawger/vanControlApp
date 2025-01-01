@@ -8,13 +8,14 @@ import DraggableFlatList, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ButtonSettingsModal } from "./components/ButtonSettingsModal";
 import { DragIcon } from "./components/DragIcon";
-import { Message, MessageLogModal } from "./components/MessageLogModal";
+import { MessageLogModal } from "./components/MessageLogModal";
 import ProgressBar from "./components/ProgressBar";
 import RelayButton, {
   idToReadable,
   RelayButtonProps,
 } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
+import { useMessages } from "./hooks/useMessages";
 
 type UpdateButtonsWithStatusesProps = {
   toggleIpAddress: string;
@@ -27,25 +28,7 @@ export default function Index() {
   const [scanProgress, setScanProgress] = useState(0);
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const addMessage = (text: string) => {
-    setMessages((prevMessages) => {
-      const newMessage = {
-        id: `${Date.now().toString()}-${Math.random()}`,
-        time: new Date().toLocaleTimeString(),
-        text,
-      };
-
-      // if last message in log is the same, only update time:
-      const lastMessage = prevMessages[0];
-      if (lastMessage && lastMessage.text === text) {
-        return [newMessage, ...prevMessages.slice(1)];
-      }
-
-      // If no existing message, simply add new message
-      return [newMessage, ...prevMessages].slice(0, 10);
-    });
-  };
+  const { messages, addMessage } = useMessages();
 
   const updateButtonsWithStatuses = ({
     toggleIpAddress,
