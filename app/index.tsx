@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import DraggableFlatList, {
@@ -15,24 +14,31 @@ import RelayButton, {
   RelayButtonProps,
 } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
+import {
+  clearLocalStorage,
+  saveBoardIps,
+  saveButtonState,
+  useLoadSavedData,
+} from "./hooks/useLoadSavedData";
 import { useMessages } from "./hooks/useMessages";
 
 type UpdateButtonsWithStatusesProps = {
-  toggleIpAddress: string;
-  newRelayStatuses: { [s: string]: number };
+  boardIp: string;
+  relaysRaw: { [s: string]: number };
 };
 
 export default function Index() {
-  const [activeIps, setActiveIps] = useState<string[]>([]);
+  const [boardIps, setBoardIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   const { messages, addMessage } = useMessages();
 
-  const updateButtonsWithStatuses = ({
-    toggleIpAddress,
-    newRelayStatuses,
+  const updateButtonsWithStatus = ({
+    boardIp: toggleIpAddress,
+    relaysRaw: newRelayStatuses,
   }: UpdateButtonsWithStatusesProps) => {
     setButtons((prevButtons) => {
       const newButtons: RelayButtonProps[] = [...prevButtons];
@@ -59,164 +65,120 @@ export default function Index() {
     });
   };
 
-  const storeLocal = async (key: string, value: any) => {
-    try {
-      await AsyncStorage.setItem(key, JSON.stringify(value));
-      addMessage(`${key} saved: ${JSON.stringify(value)}`);
-    } catch (error) {
-      addMessage(`Error saving ${key} data ${error}`);
-    }
-  };
-
-  const getLocal = async (key: string) => {
-    try {
-      const value = await AsyncStorage.getItem(key);
-      if (value !== null) {
-        return JSON.parse(value);
-      } else {
-        return null;
-      }
-    } catch (error) {
-      addMessage(`Error retrieving data ${error}`);
-      return null;
-    }
-  };
-
-  const clearLocalStorage = async () => {
-    try {
-      await AsyncStorage.clear();
-      addMessage("Local storage cleared successfully");
-    } catch (error) {
-      addMessage(`Error clearing local storage: ${error}`);
-    }
-  };
-
-  const handleReset = async () => {
-    setScanning(false);
-    setScanProgress(0);
-    setActiveIps([]);
-    setButtons([]);
-    clearLocalStorage();
-  };
-
   const FIRST_IP = 11;
   const LAST_IP = 24;
 
   const scanSubnet = async () => {
     const subnet = "192.168.10.";
-    const newActiveIps: string[] = [];
     const failedIps = [];
+    const ipsToScan = [
+      FIRST_IP - 1,
+      FIRST_IP,
+      FIRST_IP + 1,
+      LAST_IP - 1,
+      LAST_IP,
+      LAST_IP + 1,
+    ];
+    addMessage(`Scanning ${ipsToScan.length} IPs on subnet ${subnet}XXX`);
+    setScanning((p) => true);
+    setScanProgress((p) => 0);
 
-    for (let i = FIRST_IP; i <= LAST_IP; i++) {
+    for (let i of ipsToScan) {
       const ip = `${subnet}${i}`;
       const url = `http://${ip}/status`;
 
       try {
-        const response = await fetch(url, {
-          method: "GET",
-        });
+        const response = await fetch(url);
         if (response.status === 200) {
-          newActiveIps.push(ip);
+          addMessage(`Scan found ${ip} is a board`);
           const relaysRaw = await response.json();
-          updateButtonsWithStatuses({
-            toggleIpAddress: ip,
-            newRelayStatuses: relaysRaw,
+          updateButtonsWithStatus({
+            boardIp: ip,
+            relaysRaw: relaysRaw,
           });
-          addMessage(`IP ${ip} is a board`);
+          setBoardIps((prev) => {
+            const newIps = [...prev, ip];
+            saveBoardIps(newIps, addMessage);
+            return newIps;
+          });
         }
       } catch (error) {
-        addMessage(`Error scanning ${ip}. Error: ${error}`);
         failedIps.push(ip);
       }
 
+      // Update every 5 IPs or at the end
       if (failedIps.length % 5 === 0 || i === LAST_IP) {
         addMessage(`No response from ${failedIps.join(", ")}`);
+        setScanProgress((prev) => {
+          const newProgress = Math.round(
+            ((i - FIRST_IP) / ipsToScan.length) * 100
+          );
+          return newProgress;
+        });
       }
-
-      // Update every 5 IPs or at the end
-      setScanProgress((prev) => {
-        // Convert i to a percentage of total IPs (255)
-        const newProgress = Math.round(
-          ((i - FIRST_IP) / (LAST_IP - FIRST_IP)) * 100
-        );
-        return newProgress;
-      });
     }
 
-    setActiveIps(newActiveIps);
-    await storeLocal("activeIps", newActiveIps);
-    setScanning(false);
-    setScanProgress(100);
+    setScanning((p) => false);
+    setScanProgress((p) => 100);
   };
 
+  const handleReset = async () => {
+    addMessage("Resetting storage, ips, and buttons");
+    clearLocalStorage(addMessage);
+    setBoardIps([]);
+    setButtons([]);
+    addMessage("Reset complete. Scanning again.");
+    scanSubnet();
+  };
+
+  useLoadSavedData({
+    addMessage,
+    boardIps,
+    setBoardIps,
+    buttons,
+    setButtons,
+    scanning,
+    scanProgress,
+    scan: scanSubnet,
+    dataLoaded,
+    setDataLoaded,
+  });
+
   const getStatusUpdates = async () => {
-    addMessage("Checking statuses for: " + activeIps.join(", "));
-    for (const ip of activeIps) {
+    if (boardIps.length === 0) return;
+    addMessage("Checking statuses for: " + boardIps.join(", "));
+    for (const ip of boardIps) {
       const url = `http://${ip}/status`;
 
       try {
-        const response = await fetch(url, {
-          method: "GET",
-        });
+        const response = await fetch(url);
         if (response.status === 200) {
           const relaysRaw = await response.json();
-          updateButtonsWithStatuses({
-            toggleIpAddress: ip,
-            newRelayStatuses: relaysRaw,
+          updateButtonsWithStatus({
+            boardIp: ip,
+            relaysRaw: relaysRaw,
           });
+        } else {
+          addMessage(
+            `${ip} fetch error: ${JSON.stringify(response).slice(0, 100)}`
+          );
         }
       } catch (error) {
         addMessage(`Error scanning ${ip}. Error: ${error}`);
       }
     }
-  };
-
-  const handleReverseToggle = (uuid: string) => {
-    setButtons((prevButtons) => {
-      return prevButtons.map((button) => {
-        if (button.uuid !== uuid) return button;
-        return { ...button, reversed: !button.reversed };
-      });
-    });
   };
 
   // Load data from storage
   useEffect(() => {
-    if (activeIps.length === 0) {
-      getLocal("activeIps").then((value) => {
-        if (value && value.length > 0) {
-          setActiveIps(JSON.parse(value));
-          setScanProgress(100);
-          addMessage(`Remembered active IPs: ${value}`);
-        } else {
-          addMessage(`No active IPs stored: ${scanProgress} ${scanning}`);
-          if (!scanProgress && !scanning) {
-            setScanning(true);
-            scanSubnet();
-          }
-        }
-      });
-    }
-
     const intervalId = setInterval(getStatusUpdates, 1000);
 
     // Clean up the interval on component unmount
     return () => clearInterval(intervalId);
-  }, [activeIps, buttons, scanning]);
+  }, [boardIps, buttons, scanning]);
 
   const onDragEnd = ({ data }: DragEndParams<RelayButtonProps>) => {
     setButtons(data);
-  };
-
-  const hideButtonRow = (uuid: string) => {
-    setButtons((prevButtons) => {
-      return prevButtons.map((button) => {
-        if (button.uuid === uuid) {
-          return { ...button, hidden: true };
-        }
-        return button;
-      });
-    });
   };
 
   const renderButton = ({ item, drag }: RenderItemParams<RelayButtonProps>) => {
@@ -225,16 +187,13 @@ export default function Index() {
       <View style={styles.buttonRow}>
         <DragIcon drag={drag} />
         <ButtonSettingsModal
-          uuid={item.uuid}
-          handleHide={hideButtonRow}
-          handleReverseToggle={handleReverseToggle}
+          button={item}
+          setButtons={setButtons}
+          saveButtonState={saveButtonState}
           modalTitle={idToReadable(item.id)}
-        />
-        <RelayButton
-          {...item}
           addMessage={addMessage}
-          updateButtonsWithStatuses={updateButtonsWithStatuses}
         />
+        <RelayButton {...item} />
       </View>
     );
   };

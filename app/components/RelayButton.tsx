@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
-import { UpdateButtonsWithStatusesProps } from "..";
 
 function idToReadable(str: string): string {
   str = str.replace(/_/g, " "); // Replace underscores with spaces
@@ -12,12 +11,6 @@ interface RelayButtonProps {
   toggleIpAddress: string;
   uuid: string;
   reversed: boolean;
-  updateButtonsWithStatuses?: ({
-    toggleIpAddress,
-    newRelayStatuses,
-  }: UpdateButtonsWithStatusesProps) => void;
-  toggleRelay?: () => void;
-  addMessage?: (message: string) => void;
   hidden?: boolean;
 }
 
@@ -26,47 +19,44 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   turnedOn,
   toggleIpAddress,
   reversed,
-  updateButtonsWithStatuses,
-  addMessage,
 }) => {
   const reversableTurnedOn = reversed ? !turnedOn : turnedOn;
+  const styleIfOn = reversableTurnedOn ? styles.relayOn : styles.relayOff;
 
-  const styleIfOn = reversableTurnedOn ? styles.relayOff : styles.relayOn;
+  const [toggling, setToggling] = React.useState(false);
+  const [statusStyle, setStatusStyle] = React.useState(styleIfOn);
+
+  useEffect(() => {
+    setStatusStyle((p) => {
+      return reversableTurnedOn ? styles.relayOn : styles.relayOff;
+    });
+    setToggling((p) => false);
+  }, [turnedOn, reversed]);
+
   const buttonText = idToReadable(id); // Convert ID to readable text
 
-  const toggleRelay = async () => {
+  const sendToggleCommand = async () => {
+    if (toggling) {
+      return;
+    }
+    setToggling((p) => true);
+    setStatusStyle((p) => styles.disabledButton);
+
     const url = `http://${toggleIpAddress}/toggleRelay?${encodeURIComponent(
       id
     )}=toggle`;
-    fetch(url).then((response) => {
-      response
-        .json()
-        .then((relaysRaw) => {
-          if (updateButtonsWithStatuses) {
-            updateButtonsWithStatuses({
-              toggleIpAddress,
-              newRelayStatuses: relaysRaw,
-            });
-          }
-
-          if (addMessage) {
-            addMessage(`Toggled ${id}, got updates.`);
-          }
-        })
-        .catch((error) => {
-          if (addMessage) {
-            addMessage(`Error toggling ${id}. Error: ${error}`);
-          }
-        });
-    });
+    fetch(url);
   };
 
   return (
     <TouchableOpacity
-      style={[styles.button, styleIfOn, styles.expand]}
-      onPress={toggleRelay}
+      style={[styles.button, statusStyle, styles.expand]}
+      onPress={sendToggleCommand}
+      disabled={toggling}
     >
-      <Text style={[styles.buttonText]}>{buttonText}</Text>
+      <Text style={[styles.buttonText]}>
+        {toggling && "Toggling: "} {buttonText}
+      </Text>
     </TouchableOpacity>
   );
 };
@@ -85,8 +75,8 @@ const styles = StyleSheet.create({
   iconButton: {
     backgroundColor: "black",
   },
-  hideButton: {
-    backgroundColor: "grey",
+  disabledButton: {
+    backgroundColor: "darkgrey",
   },
   relayOn: {
     backgroundColor: "grey",

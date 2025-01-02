@@ -7,21 +7,51 @@ import {
   TouchableHighlight,
   View,
 } from "react-native";
+import { RelayButtonProps } from "./RelayButton";
 
 interface ButtonSettingsModalProps {
-  uuid: string;
-  handleHide: (uuid: string) => void;
-  handleReverseToggle: (uuid: string) => void;
+  button: RelayButtonProps;
   modalTitle: string;
+  setButtons: React.Dispatch<React.SetStateAction<RelayButtonProps[]>>;
+  saveButtonState: (
+    buttons: RelayButtonProps[],
+    addMessage: (s: string) => void
+  ) => void;
+  addMessage: (s: string) => void;
 }
 
 export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
-  uuid,
-  handleHide,
-  handleReverseToggle,
+  button,
   modalTitle,
+  setButtons,
+  saveButtonState,
+  addMessage,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+
+  const hideButtonRow = (uuid: string) => {
+    setButtons((prevButtons) => {
+      const newButtons = prevButtons.map((button) => {
+        if (button.uuid === uuid) {
+          return { ...button, hidden: true };
+        }
+        return button;
+      });
+      saveButtonState(newButtons, addMessage);
+      return newButtons;
+    });
+  };
+
+  const handleReverseToggle = (uuid: string) => {
+    setButtons((prevButtons) => {
+      const newButtons = prevButtons.map((button) => {
+        if (button.uuid !== uuid) return button;
+        return { ...button, reversed: !button.reversed };
+      });
+      saveButtonState(newButtons, addMessage);
+      return newButtons;
+    });
+  };
 
   return (
     <View>
@@ -45,18 +75,20 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
               <TouchableHighlight
                 style={[styles.button, styles.primary]}
                 onPress={(e) => {
-                  handleReverseToggle(uuid);
+                  handleReverseToggle(button.uuid);
                   setModalVisible(false);
                 }}
               >
-                <Text style={[styles.text]}>Reverse On/Off</Text>
+                <Text style={[styles.text]}>
+                  {button.reversed ? "Make On" : "Make Off"} = On
+                </Text>
               </TouchableHighlight>
             </View>
 
             <View style={styles.buttonView}>
               <TouchableHighlight
                 style={[styles.button, styles.danger]}
-                onPress={(e) => handleHide(uuid)}
+                onPress={(e) => hideButtonRow(button.uuid)}
               >
                 <Text style={[styles.text]}>Hide</Text>
               </TouchableHighlight>
