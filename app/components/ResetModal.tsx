@@ -22,7 +22,7 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
         onPress={(e) => setModalVisible(true)}
       >
         <View style={{ flexDirection: "row" }}>
-          <Text style={{ color: "white" }}>Reset Hidden Buttons </Text>
+          <Text style={{ color: "white" }}>Reset </Text>
           <MaterialIcons name="lock-reset" size={24} color="white" />
         </View>
       </TouchableHighlight>

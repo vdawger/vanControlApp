@@ -14,6 +14,7 @@ import RelayButton, {
   RelayButtonProps,
 } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
+import { UnhideButtonsModal } from "./components/UnhideButtonsModal";
 import {
   clearLocalStorage,
   saveBoardIps,
@@ -220,7 +221,14 @@ export default function Index() {
           scanProgress={scanProgress}
           clearMessages={clearMessages}
         />
-        <ResetModal handleReset={handleReset} />
+        <View style={styles.buttonRow}>
+          <ResetModal handleReset={handleReset} />
+          <UnhideButtonsModal
+            buttons={buttons}
+            setButtons={setButtons}
+            addMessage={addMessage}
+          />
+        </View>
       </View>
     </GestureHandlerRootView>
   );
@@ -232,10 +240,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   buttonRow: {
-    width: "100%",
-    padding: 10,
+    paddingBottom: 10,
     flexDirection: "row",
-    alignItems: "center",
   },
   expand: {
     flex: 1,
