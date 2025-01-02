@@ -30,7 +30,9 @@ const useMessages = () => {
     });
   };
 
-  return { messages, addMessage };
+  const clearMessages = () => setMessages([]);
+
+  return { messages, addMessage, clearMessages };
 };
 
 export { Message, useMessages };

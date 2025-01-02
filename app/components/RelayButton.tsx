@@ -21,14 +21,14 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   reversed,
 }) => {
   const reversableTurnedOn = reversed ? !turnedOn : turnedOn;
-  const styleIfOn = reversableTurnedOn ? styles.relayOn : styles.relayOff;
+  const styleIfOn = reversableTurnedOn ? styles.relayOff : styles.relayOn;
 
   const [toggling, setToggling] = React.useState(false);
   const [statusStyle, setStatusStyle] = React.useState(styleIfOn);
 
   useEffect(() => {
     setStatusStyle((p) => {
-      return reversableTurnedOn ? styles.relayOn : styles.relayOff;
+      return reversableTurnedOn ? styles.relayOff : styles.relayOn;
     });
     setToggling((p) => false);
   }, [turnedOn, reversed]);

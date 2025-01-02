@@ -14,18 +14,24 @@ import ProgressBar from "./ProgressBar";
 interface MessageLogModalProps {
   messages: Message[];
   scanProgress: number;
+  clearMessages: () => void;
 }
 
 export const MessageLogModal: FC<MessageLogModalProps> = ({
   messages,
   scanProgress,
+  clearMessages,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+
+  const clearLog = () => {
+    clearMessages();
+  };
 
   return (
     <View>
       <TouchableHighlight
-        style={[styles.button, styles.primary]}
+        style={[styles.button, styles.fullWidth, styles.primary]}
         onPress={(e) => setModalVisible(true)}
       >
         <View style={{ flexDirection: "row" }}>
@@ -61,7 +67,13 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
             />
             <View style={styles.buttonView}>
               <TouchableHighlight
-                style={[styles.button, styles.cancel]}
+                style={[styles.button, styles.rowWidth, styles.danger]}
+                onPress={(e) => clearLog()}
+              >
+                <Text style={[styles.text]}>Clear Messages</Text>
+              </TouchableHighlight>
+              <TouchableHighlight
+                style={[styles.button, styles.rowWidth, styles.cancel]}
                 onPress={(e) => setModalVisible(false)}
               >
                 <Text style={[styles.text]}>Done</Text>
@@ -80,8 +92,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
   },
-  button: {
+  fullWidth: {
     width: "80%",
+  },
+  rowWidth: {
+    width: "40%",
+  },
+  button: {
     height: 40,
     alignItems: "center",
     justifyContent: "center",
@@ -96,6 +113,9 @@ const styles = StyleSheet.create({
   },
   primary: {
     backgroundColor: "blue",
+  },
+  danger: {
+    backgroundColor: "red",
   },
   text: {
     paddingHorizontal: 5,

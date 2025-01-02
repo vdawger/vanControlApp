@@ -34,7 +34,7 @@ export default function Index() {
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
 
-  const { messages, addMessage } = useMessages();
+  const { messages, addMessage, clearMessages } = useMessages();
 
   const updateButtonsWithStatus = ({
     boardIp: toggleIpAddress,
@@ -65,7 +65,7 @@ export default function Index() {
     });
   };
 
-  const FIRST_IP = 11;
+  const FIRST_IP = 12;
   const LAST_IP = 24;
 
   const scanSubnet = async () => {
@@ -203,11 +203,11 @@ export default function Index() {
       <View
         style={{
           height: "100%",
-          paddingBottom: scanProgress ? 120 : 100,
+          paddingBottom: scanProgress ? 160 : 140,
           backgroundColor: "black",
         }}
       >
-        {scanProgress < 100 && <ProgressBar progress={scanProgress} />}
+        {scanProgress < 100 ? <ProgressBar progress={scanProgress} /> : null}
         <DraggableFlatList
           data={buttons}
           renderItem={renderButton}
@@ -215,7 +215,11 @@ export default function Index() {
           scrollEnabled={true}
           keyExtractor={(item) => item.uuid}
         />
-        <MessageLogModal messages={messages} scanProgress={scanProgress} />
+        <MessageLogModal
+          messages={messages}
+          scanProgress={scanProgress}
+          clearMessages={clearMessages}
+        />
         <ResetModal handleReset={handleReset} />
       </View>
     </GestureHandlerRootView>
