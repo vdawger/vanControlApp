@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { Text, TouchableOpacity } from "react-native";
+import { buttonStyles } from "../componentStyles/buttonStyles";
 
 function idToReadable(str: string): string {
   str = str.replace(/_/g, " "); // Replace underscores with spaces
@@ -21,14 +22,16 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   reversed,
 }) => {
   const reversableTurnedOn = reversed ? !turnedOn : turnedOn;
-  const styleIfOn = reversableTurnedOn ? styles.relayOff : styles.relayOn;
+  const styleIfOn = reversableTurnedOn
+    ? buttonStyles.relayOn
+    : buttonStyles.relayOff;
 
   const [toggling, setToggling] = React.useState(false);
   const [statusStyle, setStatusStyle] = React.useState(styleIfOn);
 
   useEffect(() => {
     setStatusStyle((p) => {
-      return reversableTurnedOn ? styles.relayOff : styles.relayOn;
+      return reversableTurnedOn ? buttonStyles.relayOn : buttonStyles.relayOff;
     });
     setToggling((p) => false);
   }, [turnedOn, reversed]);
@@ -40,7 +43,7 @@ const RelayButton: React.FC<RelayButtonProps> = ({
       return;
     }
     setToggling((p) => true);
-    setStatusStyle((p) => styles.disabledButton);
+    setStatusStyle((p) => buttonStyles.disabledButton);
 
     const url = `http://${toggleIpAddress}/toggleRelay?${encodeURIComponent(
       id
@@ -50,46 +53,16 @@ const RelayButton: React.FC<RelayButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[styles.button, statusStyle, styles.expand]}
+      style={[buttonStyles.modalButton, statusStyle, buttonStyles.expand]}
       onPress={sendToggleCommand}
       disabled={toggling}
     >
-      <Text style={[styles.buttonText]}>
+      <Text style={[buttonStyles.text]}>
         {toggling && "Toggling: "} {buttonText}
       </Text>
     </TouchableOpacity>
   );
 };
-
-const styles = StyleSheet.create({
-  expand: {
-    flex: 1,
-  },
-  button: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  iconButton: {
-    backgroundColor: "black",
-  },
-  disabledButton: {
-    backgroundColor: "darkgrey",
-  },
-  relayOn: {
-    backgroundColor: "grey",
-  },
-  relayOff: {
-    backgroundColor: "green",
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-});
 
 export { idToReadable };
 export type { RelayButtonProps };

@@ -235,13 +235,11 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  messages: {
-    flex: 1,
-    marginBottom: 10,
-  },
   buttonRow: {
+    flex: 1,
     paddingBottom: 10,
     flexDirection: "row",
+    justifyContent: "space-evenly",
   },
   expand: {
     flex: 1,

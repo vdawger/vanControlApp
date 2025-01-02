@@ -1,13 +1,7 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FC, useState } from "react";
-import {
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableHighlight,
-  View,
-} from "react-native";
+import { FlatList, Modal, Text, TouchableHighlight, View } from "react-native";
+import { buttonStyles } from "../componentStyles/buttonStyles";
 import { Message } from "../hooks/useMessages";
 import ProgressBar from "./ProgressBar";
 
@@ -29,9 +23,13 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
   };
 
   return (
-    <View>
+    <View style={{ alignItems: "center", width: "100%" }}>
       <TouchableHighlight
-        style={[styles.button, styles.fullWidth, styles.primary]}
+        style={[
+          buttonStyles.modalButton,
+          buttonStyles.primary,
+          buttonStyles.fullWidth,
+        ]}
         onPress={(e) => setModalVisible(true)}
       >
         <View style={{ flexDirection: "row" }}>
@@ -47,36 +45,44 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.titleText}>Network Scanned</Text>
+        <View style={buttonStyles.centeredView}>
+          <View style={buttonStyles.modalView}>
+            <Text style={buttonStyles.titleText}>Network Scanned</Text>
             <ProgressBar progress={scanProgress} />
-            <Text style={styles.titleText}>Message Log</Text>
+            <Text style={buttonStyles.titleText}>Message Log</Text>
             <FlatList
               data={messages}
               renderItem={({ item }) => (
-                <View style={styles.message}>
+                <View style={buttonStyles.message}>
                   <Text
-                    style={styles.text}
+                    style={buttonStyles.text}
                   >{`${item.time}: ${item.text}`}</Text>
                 </View>
               )}
               keyExtractor={(item) => item.id}
               inverted // Inverts the list so new messages appear at the top
-              style={styles.list}
+              style={buttonStyles.list}
             />
-            <View style={styles.buttonView}>
+            <View style={buttonStyles.buttonRow}>
               <TouchableHighlight
-                style={[styles.button, styles.rowWidth, styles.danger]}
+                style={[
+                  buttonStyles.modalButton,
+                  buttonStyles.rowWidth,
+                  buttonStyles.danger,
+                ]}
                 onPress={(e) => clearLog()}
               >
-                <Text style={[styles.text]}>Clear Messages</Text>
+                <Text style={[buttonStyles.text]}>Clear Messages</Text>
               </TouchableHighlight>
               <TouchableHighlight
-                style={[styles.button, styles.rowWidth, styles.cancel]}
+                style={[
+                  buttonStyles.modalButton,
+                  buttonStyles.rowWidth,
+                  buttonStyles.cancel,
+                ]}
                 onPress={(e) => setModalVisible(false)}
               >
-                <Text style={[styles.text]}>Done</Text>
+                <Text style={[buttonStyles.text]}>Done</Text>
               </TouchableHighlight>
             </View>
           </View>
@@ -85,76 +91,5 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  buttonView: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  fullWidth: {
-    width: "80%",
-  },
-  rowWidth: {
-    width: "40%",
-  },
-  button: {
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: "row",
-    marginVertical: 5,
-    alignSelf: "center",
-  },
-  cancel: {
-    backgroundColor: "grey",
-  },
-  primary: {
-    backgroundColor: "blue",
-  },
-  danger: {
-    backgroundColor: "red",
-  },
-  text: {
-    paddingHorizontal: 5,
-    color: "white",
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // transparent color how do i make this transparent?
-  },
-  modalView: {
-    backgroundColor: "black",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 10,
-    width: "100%",
-  },
-  titleText: {
-    fontSize: 20,
-    color: "white",
-    textAlign: "center",
-    marginVertical: 10,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "black",
-  },
-  list: {
-    height: 400,
-    marginBottom: 10,
-  },
-  message: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "grey",
-    color: "white",
-    fontSize: 12,
-  },
-});
 
 export type { Message };
