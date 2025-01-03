@@ -25,13 +25,20 @@ export const buttonStyles = StyleSheet.create({
     width: "50%",
   },
   modalButton: {
-    height: 40,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: "row",
-    marginVertical: 5,
+    marginBottom: 5,
+    alignContent: "center",
+  },
+  relayIcon: {
+    width: 50,
+    alignContent: "center",
+    justifyContent: "center",
+    marginRight: 5,
   },
   cancel: {
     backgroundColor: "grey",

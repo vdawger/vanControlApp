@@ -57,10 +57,10 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
   return (
     <View>
       <TouchableHighlight
-        style={{ width: 50 }}
+        style={[buttonStyles.relayIcon]}
         onPress={(e) => setModalVisible(true)}
       >
-        <Ionicons name="settings-outline" size={40} color="white" />
+        <Ionicons name="settings-outline" size={50} color="white" />
       </TouchableHighlight>
 
       <Modal
