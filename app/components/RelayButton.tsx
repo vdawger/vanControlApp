@@ -1,3 +1,4 @@
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useEffect } from "react";
 import { Text, TouchableOpacity } from "react-native";
 import { buttonStyles } from "../componentStyles/buttonStyles";
@@ -12,6 +13,7 @@ interface RelayButtonProps {
   toggleIpAddress: string;
   uuid: string;
   reversed: boolean;
+  boardIps?: string[];
   hidden?: boolean;
 }
 
@@ -20,6 +22,7 @@ const RelayButton: React.FC<RelayButtonProps> = ({
   turnedOn,
   toggleIpAddress,
   reversed,
+  boardIps,
 }) => {
   const reversableTurnedOn = reversed ? !turnedOn : turnedOn;
   const styleIfOn = reversableTurnedOn
@@ -28,13 +31,6 @@ const RelayButton: React.FC<RelayButtonProps> = ({
 
   const [toggling, setToggling] = React.useState(false);
   const [statusStyle, setStatusStyle] = React.useState(styleIfOn);
-
-  useEffect(() => {
-    setStatusStyle((p) => {
-      return reversableTurnedOn ? buttonStyles.relayOn : buttonStyles.relayOff;
-    });
-    setToggling((p) => false);
-  }, [turnedOn, reversed]);
 
   const buttonText = idToReadable(id); // Convert ID to readable text
 
@@ -48,17 +44,39 @@ const RelayButton: React.FC<RelayButtonProps> = ({
     const url = `http://${toggleIpAddress}/toggleRelay?${encodeURIComponent(
       id
     )}=toggle`;
-    fetch(url);
+    fetch(url).then((response) => {
+      // assume  it's changed until status udpate confirms it
+      setToggling((p) => false);
+      setStatusStyle((p) => {
+        return reversableTurnedOn
+          ? buttonStyles.relayOff
+          : buttonStyles.relayOn;
+      });
+    });
   };
+
+  const boardDisconnected =
+    !boardIps || !boardIps.find((ip) => ip === toggleIpAddress);
+
+  useEffect(() => {
+    setToggling((p) => false);
+    setStatusStyle((p) => {
+      if (boardDisconnected) return buttonStyles.disabledButton;
+      return reversableTurnedOn ? buttonStyles.relayOn : buttonStyles.relayOff;
+    });
+  }, [turnedOn, reversed, boardDisconnected]);
 
   return (
     <TouchableOpacity
       style={[buttonStyles.button, statusStyle, buttonStyles.expand]}
       onPress={sendToggleCommand}
-      disabled={toggling}
+      disabled={toggling || boardDisconnected}
     >
       <Text style={[buttonStyles.text]}>
-        {toggling && "Toggling: "} {buttonText}
+        {toggling && "Toggling: "} {`${buttonText} `}
+        {boardDisconnected && (
+          <MaterialIcons name="signal-wifi-off" size={12} color="white" />
+        )}
       </Text>
     </TouchableOpacity>
   );

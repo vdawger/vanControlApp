@@ -190,7 +190,10 @@ export default function Index() {
     setButtons(data);
   };
 
-  const renderButton = ({ item, drag }: RenderItemParams<RelayButtonProps>) => {
+  const renderButtonRow = ({
+    item,
+    drag,
+  }: RenderItemParams<RelayButtonProps>) => {
     if (item.hidden) return null;
     return (
       <View style={styles.buttonRow}>
@@ -202,7 +205,7 @@ export default function Index() {
           modalTitle={idToReadable(item.id)}
           addMessage={addMessage}
         />
-        <RelayButton {...item} />
+        <RelayButton {...item} boardIps={boardIps} />
       </View>
     );
   };
@@ -217,13 +220,15 @@ export default function Index() {
         }}
       >
         {scanProgress < 100 ? <ProgressBar progress={scanProgress} /> : null}
+
         <DraggableFlatList
           data={buttons}
-          renderItem={renderButton}
+          renderItem={renderButtonRow}
           onDragEnd={onDragEnd}
           scrollEnabled={true}
           keyExtractor={(item) => item.uuid}
         />
+
         <View style={styles.buttonRow}>
           <WifiStatus addMessage={addMessage} />
           <MessageLogModal
@@ -232,6 +237,7 @@ export default function Index() {
             clearMessages={clearMessages}
           />
         </View>
+
         <View style={styles.buttonRow}>
           <ResetModal handleReset={handleReset} forgetBoards={forgetBoards} />
           <UnhideButtonsModal

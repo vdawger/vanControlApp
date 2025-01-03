@@ -41,18 +41,32 @@ export const ResetModal: FC<ResetModal> = ({ handleReset, forgetBoards }) => {
       >
         <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
-            <Text style={buttonStyles.titleText}>Reset Hidden Buttons?</Text>
+            <Text style={buttonStyles.titleText}>Reset Menu</Text>
 
-            <Text style={buttonStyles.text}>
-              This will reset all hidden buttons to be visible and require a
-              network rescan.
+            <View style={buttonStyles.buttonRow}>
+              <TouchableHighlight
+                style={[
+                  buttonStyles.button,
+                  buttonStyles.fullWidth,
+                  buttonStyles.primary,
+                ]}
+                onPress={(e) => {
+                  forgetBoards();
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[buttonStyles.text]}>Rescan For Boards</Text>
+              </TouchableHighlight>
+            </View>
+            <Text style={[buttonStyles.text, buttonStyles.spaceAfter]}>
+              This will forget the known boards and rescan the network.
             </Text>
 
             <View style={buttonStyles.buttonRow}>
               <TouchableHighlight
                 style={[
                   buttonStyles.button,
-                  buttonStyles.twoButtonsInARow,
+                  buttonStyles.fullWidth,
                   buttonStyles.danger,
                 ]}
                 onPress={(e) => {
@@ -62,21 +76,11 @@ export const ResetModal: FC<ResetModal> = ({ handleReset, forgetBoards }) => {
               >
                 <Text style={[buttonStyles.text]}>Reset Settings</Text>
               </TouchableHighlight>
-
-              <TouchableHighlight
-                style={[
-                  buttonStyles.button,
-                  buttonStyles.twoButtonsInARow,
-                  buttonStyles.primary,
-                ]}
-                onPress={(e) => {
-                  forgetBoards();
-                  setModalVisible(false);
-                }}
-              >
-                <Text style={[buttonStyles.text]}>Forget Boards (Rescan)</Text>
-              </TouchableHighlight>
             </View>
+            <Text style={[buttonStyles.text, buttonStyles.spaceAfter]}>
+              This will reset all hidden buttons to be visible and require a
+              network rescan.
+            </Text>
 
             <View style={buttonStyles.buttonRow}>
               <TouchableHighlight

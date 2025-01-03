@@ -6,6 +6,9 @@ export const buttonStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
   },
+  spaceAfter: {
+    marginBottom: 10,
+  },
   expand: {
     // makes relay buttons take up all available space
     flex: 1,
