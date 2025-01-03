@@ -29,12 +29,18 @@ type UpdateButtonsWithStatusesProps = {
   relaysRaw: { [s: string]: number };
 };
 
+type LastSuccessfulStatusCheckProps = {
+  [s: string]: number;
+};
+
 export default function Index() {
   const [boardIps, setBoardIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [statusChecksSinceLastContact, setStatusChecksSinceLastContact] =
+    useState<LastSuccessfulStatusCheckProps>({});
 
   const { messages, addMessage, clearMessages } = useMessages();
 
@@ -84,6 +90,9 @@ export default function Index() {
     addMessage(`Scanning ${ipsToScan.length} IPs on subnet ${subnet}XXX`);
     setScanning((p) => true);
     setScanProgress((p) => 0);
+    setStatusChecksSinceLastContact(
+      (p) => ({} as LastSuccessfulStatusCheckProps)
+    );
 
     for (let i of ipsToScan) {
       const ip = `${subnet}${i}`;
@@ -129,6 +138,7 @@ export default function Index() {
     clearLocalStorage(addMessage);
     setBoardIps([]);
     setButtons([]);
+    setStatusChecksSinceLastContact({});
     addMessage("Reset complete. Scanning again.");
     scanSubnet();
   };
@@ -137,6 +147,7 @@ export default function Index() {
     addMessage("Forgetting boards and rescanning");
     saveBoardIps([], addMessage);
     setBoardIps([]);
+
     scanSubnet();
   };
 
@@ -160,6 +171,18 @@ export default function Index() {
     for (const ip of boardIps) {
       const url = `http://${ip}/status`;
 
+      if (
+        statusChecksSinceLastContact[ip] &&
+        statusChecksSinceLastContact[ip] > 7
+      ) {
+        addMessage(`Have not heard from ${ip} in 7 checks. Removing.`);
+        setBoardIps((prev) => {
+          // without the one we haven't heard from:
+          return prev.filter((savedBoardIp) => savedBoardIp !== ip);
+        });
+        continue;
+      }
+
       try {
         const response = await fetch(url);
         if (response.status === 200) {
@@ -168,13 +191,29 @@ export default function Index() {
             boardIp: ip,
             relaysRaw: relaysRaw,
           });
+
+          setStatusChecksSinceLastContact((prev) => {
+            return { ...prev, [ip]: 0 };
+          });
         } else {
+          setStatusChecksSinceLastContact((prev) => {
+            const lastCheck = prev[ip] ?? 0;
+            return { ...prev, [ip]: lastCheck + 1 };
+          });
           addMessage(
-            `${ip} fetch error: ${JSON.stringify(response).slice(0, 100)}`
+            `${ip} fetch error attempt #${
+              statusChecksSinceLastContact[ip]
+            }: ${JSON.stringify(response).slice(0, 100)}`
           );
         }
       } catch (error) {
-        addMessage(`Error scanning ${ip}. Error: ${error}`);
+        setStatusChecksSinceLastContact((prev) => {
+          const lastCheck = prev[ip] ?? 0;
+          return { ...prev, [ip]: lastCheck + 1 };
+        });
+        addMessage(
+          `Error scanning ${ip}. Attempt ${statusChecksSinceLastContact[ip]}. Error: ${error}`
+        );
       }
     }
   };
