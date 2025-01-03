@@ -69,13 +69,13 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={buttonStyles.centeredView}>
+        <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
             <Text style={buttonStyles.titleText}>{modalTitle}</Text>
             <View style={buttonStyles.buttonRow}>
               <TouchableOpacity
                 style={[
-                  buttonStyles.modalButton,
+                  buttonStyles.button,
                   buttonStyles.primary,
                   buttonStyles.fullWidth,
                 ]}
@@ -93,7 +93,7 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
             <View style={buttonStyles.buttonRow}>
               <TouchableOpacity
                 style={[
-                  buttonStyles.modalButton,
+                  buttonStyles.button,
                   buttonStyles.danger,
                   buttonStyles.fullWidth,
                 ]}
@@ -106,7 +106,7 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
             <View style={buttonStyles.buttonRow}>
               <TouchableOpacity
                 style={[
-                  buttonStyles.modalButton,
+                  buttonStyles.button,
                   buttonStyles.cancel,
                   buttonStyles.fullWidth,
                 ]}

@@ -53,7 +53,7 @@ const RelayButton: React.FC<RelayButtonProps> = ({
 
   return (
     <TouchableOpacity
-      style={[buttonStyles.modalButton, statusStyle, buttonStyles.expand]}
+      style={[buttonStyles.button, statusStyle, buttonStyles.expand]}
       onPress={sendToggleCommand}
       disabled={toggling}
     >

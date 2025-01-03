@@ -20,7 +20,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress = 0 }) => {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-    height: 20,
+    height: 30,
     backgroundColor: "black",
     borderRadius: 10,
     overflow: "hidden",

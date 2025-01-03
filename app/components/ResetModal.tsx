@@ -20,7 +20,7 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
     <View style={{ alignItems: "center", flex: 0.5 }}>
       <TouchableOpacity
         style={[
-          buttonStyles.modalButton,
+          buttonStyles.button,
           buttonStyles.danger,
           buttonStyles.fullWidth,
         ]}
@@ -38,7 +38,7 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={buttonStyles.centeredView}>
+        <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
             <Text style={buttonStyles.titleText}>Reset Hidden Buttons?</Text>
 
@@ -50,8 +50,8 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
             <View style={buttonStyles.buttonRow}>
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   buttonStyles.danger,
                 ]}
                 onPress={(e) => {
@@ -64,8 +64,8 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
 
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   buttonStyles.cancel,
                 ]}
                 onPress={(e) => setModalVisible(false)}

@@ -7,6 +7,7 @@ export const buttonStyles = StyleSheet.create({
     justifyContent: "space-around",
   },
   expand: {
+    // makes relay buttons take up all available space
     flex: 1,
   },
   relayOff: {
@@ -21,10 +22,10 @@ export const buttonStyles = StyleSheet.create({
   fullWidth: {
     width: "100%",
   },
-  rowWidth: {
+  twoButtonsInARow: {
     width: "50%",
   },
-  modalButton: {
+  button: {
     height: 50,
     alignItems: "center",
     justifyContent: "center",
@@ -53,7 +54,7 @@ export const buttonStyles = StyleSheet.create({
     paddingHorizontal: 5,
     color: "white",
   },
-  centeredView: {
+  modalAtBottomOfScreen: {
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
@@ -72,11 +73,7 @@ export const buttonStyles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 10,
   },
-  container: {
-    flex: 1,
-    backgroundColor: "black",
-  },
-  list: {
+  messageList: {
     height: 400,
     marginBottom: 10,
   },

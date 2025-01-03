@@ -26,7 +26,7 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
     <View style={{ alignItems: "center", width: "100%" }}>
       <TouchableHighlight
         style={[
-          buttonStyles.modalButton,
+          buttonStyles.button,
           buttonStyles.primary,
           buttonStyles.fullWidth,
         ]}
@@ -45,10 +45,13 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={buttonStyles.centeredView}>
+        <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
             <Text style={buttonStyles.titleText}>Network Scanned</Text>
             <ProgressBar progress={scanProgress} />
+            <Text style={buttonStyles.text}>
+              {scanProgress === 100 ? "Scan complete" : "Scanning..."}
+            </Text>
             <Text style={buttonStyles.titleText}>Message Log</Text>
             <FlatList
               data={messages}
@@ -61,13 +64,13 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
               )}
               keyExtractor={(item) => item.id}
               inverted // Inverts the list so new messages appear at the top
-              style={buttonStyles.list}
+              style={buttonStyles.messageList}
             />
             <View style={buttonStyles.buttonRow}>
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   buttonStyles.danger,
                 ]}
                 onPress={(e) => clearLog()}
@@ -76,8 +79,8 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
               </TouchableHighlight>
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   buttonStyles.cancel,
                 ]}
                 onPress={(e) => setModalVisible(false)}

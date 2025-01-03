@@ -42,7 +42,7 @@ export const UnhideButtonsModal: FC<UnhideButtonsModalProps> = ({
     <View style={{ alignItems: "center", flex: 0.5 }}>
       <TouchableOpacity
         style={[
-          buttonStyles.modalButton,
+          buttonStyles.button,
           buttonStyles.cancel,
           buttonStyles.fullWidth,
         ]}
@@ -64,7 +64,7 @@ export const UnhideButtonsModal: FC<UnhideButtonsModalProps> = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={buttonStyles.centeredView}>
+        <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
             <Text style={buttonStyles.titleText}>
               <Text style={buttonStyles.titleText}>Show hidden buttons?</Text>
@@ -75,8 +75,8 @@ export const UnhideButtonsModal: FC<UnhideButtonsModalProps> = ({
             <View style={buttonStyles.buttonRow}>
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   numberOfHiddenButtons === 0
                     ? buttonStyles.disabledButton
                     : buttonStyles.primary,
@@ -90,8 +90,8 @@ export const UnhideButtonsModal: FC<UnhideButtonsModalProps> = ({
               </TouchableHighlight>
               <TouchableHighlight
                 style={[
-                  buttonStyles.modalButton,
-                  buttonStyles.rowWidth,
+                  buttonStyles.button,
+                  buttonStyles.twoButtonsInARow,
                   buttonStyles.cancel,
                 ]}
                 onPress={(e) => setModalVisible(false)}
