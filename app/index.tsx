@@ -151,6 +151,7 @@ export default function Index() {
     scan: scanSubnet,
     dataLoaded,
     setDataLoaded,
+    setScanProgress,
   });
 
   const getStatusUpdates = async () => {

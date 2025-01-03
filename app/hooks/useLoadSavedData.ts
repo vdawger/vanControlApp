@@ -81,6 +81,7 @@ type UseLoadSavedDataProps = {
   scan: () => void;
   dataLoaded: boolean;
   setDataLoaded: (b: boolean) => void;
+  setScanProgress: (n: number) => void;
 };
 
 const useLoadSavedData = ({
@@ -94,6 +95,7 @@ const useLoadSavedData = ({
   scan,
   dataLoaded,
   setDataLoaded,
+  setScanProgress,
 }: UseLoadSavedDataProps) => {
   useEffect(() => {
     if (dataLoaded) {
@@ -108,6 +110,7 @@ const useLoadSavedData = ({
 
         if (savedIps && savedIps.length > 0) {
           setBoardIps(savedIps);
+          setScanProgress(100);
           addMessage(`Restoring saved IPs: ${savedIps}`);
         } else {
           addMessage(`No active IPs stored`);
