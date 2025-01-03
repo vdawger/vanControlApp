@@ -11,9 +11,10 @@ import { buttonStyles } from "../componentStyles/buttonStyles";
 
 interface ResetModal {
   handleReset: () => void;
+  forgetBoards: () => void;
 }
 
-export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
+export const ResetModal: FC<ResetModal> = ({ handleReset, forgetBoards }) => {
   const [modalVisible, setModalVisible] = useState(false);
 
   return (
@@ -21,7 +22,7 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
       <TouchableOpacity
         style={[
           buttonStyles.button,
-          buttonStyles.danger,
+          buttonStyles.cancel,
           buttonStyles.fullWidth,
         ]}
         onPress={(e) => setModalVisible(true)}
@@ -59,13 +60,29 @@ export const ResetModal: FC<ResetModal> = ({ handleReset: handleReset }) => {
                   setModalVisible(false);
                 }}
               >
-                <Text style={[buttonStyles.text]}>Reset</Text>
+                <Text style={[buttonStyles.text]}>Reset Settings</Text>
               </TouchableHighlight>
 
               <TouchableHighlight
                 style={[
                   buttonStyles.button,
                   buttonStyles.twoButtonsInARow,
+                  buttonStyles.primary,
+                ]}
+                onPress={(e) => {
+                  forgetBoards();
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[buttonStyles.text]}>Forget Boards (Rescan)</Text>
+              </TouchableHighlight>
+            </View>
+
+            <View style={buttonStyles.buttonRow}>
+              <TouchableHighlight
+                style={[
+                  buttonStyles.button,
+                  buttonStyles.fullWidth,
                   buttonStyles.cancel,
                 ]}
                 onPress={(e) => setModalVisible(false)}

@@ -15,6 +15,7 @@ import RelayButton, {
 } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
 import { UnhideButtonsModal } from "./components/UnhideButtonsModal";
+import WifiStatus from "./components/WifiStatus";
 import {
   clearLocalStorage,
   saveBoardIps,
@@ -132,6 +133,13 @@ export default function Index() {
     scanSubnet();
   };
 
+  const forgetBoards = async () => {
+    addMessage("Forgetting boards and rescanning");
+    saveBoardIps([], addMessage);
+    setBoardIps([]);
+    scanSubnet();
+  };
+
   useLoadSavedData({
     addMessage,
     boardIps,
@@ -216,13 +224,16 @@ export default function Index() {
           scrollEnabled={true}
           keyExtractor={(item) => item.uuid}
         />
-        <MessageLogModal
-          messages={messages}
-          scanProgress={scanProgress}
-          clearMessages={clearMessages}
-        />
         <View style={styles.buttonRow}>
-          <ResetModal handleReset={handleReset} />
+          <WifiStatus addMessage={addMessage} />
+          <MessageLogModal
+            messages={messages}
+            scanProgress={scanProgress}
+            clearMessages={clearMessages}
+          />
+        </View>
+        <View style={styles.buttonRow}>
+          <ResetModal handleReset={handleReset} forgetBoards={forgetBoards} />
           <UnhideButtonsModal
             buttons={buttons}
             setButtons={setButtons}
@@ -236,7 +247,6 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   buttonRow: {
-    flex: 1,
     paddingBottom: 10,
     flexDirection: "row",
     justifyContent: "space-evenly",

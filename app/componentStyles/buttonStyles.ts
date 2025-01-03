@@ -32,7 +32,7 @@ export const buttonStyles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: "row",
-    marginBottom: 5,
+    marginBottom: 1,
     alignContent: "center",
   },
   relayIcon: {
@@ -51,14 +51,13 @@ export const buttonStyles = StyleSheet.create({
     backgroundColor: "red",
   },
   text: {
-    paddingHorizontal: 5,
     color: "white",
   },
   modalAtBottomOfScreen: {
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // transparent color how do i make this transparent?
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   modalView: {
     backgroundColor: "black",

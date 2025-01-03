@@ -1,6 +1,6 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { FC, useState } from "react";
-import { FlatList, Modal, Text, TouchableHighlight, View } from "react-native";
+import { FlatList, Modal, Text, TouchableOpacity, View } from "react-native";
 import { buttonStyles } from "../componentStyles/buttonStyles";
 import { Message } from "../hooks/useMessages";
 import ProgressBar from "./ProgressBar";
@@ -23,8 +23,8 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
   };
 
   return (
-    <View style={{ alignItems: "center", width: "100%" }}>
-      <TouchableHighlight
+    <View style={{ alignItems: "center", width: "50%" }}>
+      <TouchableOpacity
         style={[
           buttonStyles.button,
           buttonStyles.primary,
@@ -37,7 +37,7 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
           <Text style={{ color: "white" }}> messages </Text>
           <FontAwesome name="stack-overflow" size={24} color="white" />
         </View>
-      </TouchableHighlight>
+      </TouchableOpacity>
 
       <Modal
         animationType="slide"
@@ -67,7 +67,7 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
               style={buttonStyles.messageList}
             />
             <View style={buttonStyles.buttonRow}>
-              <TouchableHighlight
+              <TouchableOpacity
                 style={[
                   buttonStyles.button,
                   buttonStyles.twoButtonsInARow,
@@ -76,8 +76,8 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
                 onPress={(e) => clearLog()}
               >
                 <Text style={[buttonStyles.text]}>Clear Messages</Text>
-              </TouchableHighlight>
-              <TouchableHighlight
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[
                   buttonStyles.button,
                   buttonStyles.twoButtonsInARow,
@@ -86,7 +86,7 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
                 onPress={(e) => setModalVisible(false)}
               >
                 <Text style={[buttonStyles.text]}>Done</Text>
-              </TouchableHighlight>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
