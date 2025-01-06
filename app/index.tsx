@@ -30,7 +30,7 @@ type UpdateButtonsWithStatusesProps = {
 };
 
 type LastSuccessfulStatusCheckProps = {
-  [s: string]: number;
+  [ip: string]: number;
 };
 
 export default function Index() {
@@ -111,6 +111,9 @@ export default function Index() {
             const newIps = [...prev, ip];
             saveBoardIps(newIps, addMessage);
             return newIps;
+          });
+          setStatusChecksSinceLastContact((prev) => {
+            return { ...prev, [ip]: 0 };
           });
         }
       } catch (error) {
@@ -200,6 +203,7 @@ export default function Index() {
             const lastCheck = prev[ip] ?? 0;
             return { ...prev, [ip]: lastCheck + 1 };
           });
+
           addMessage(
             `${ip} fetch error attempt #${
               statusChecksSinceLastContact[ip]
@@ -211,8 +215,11 @@ export default function Index() {
           const lastCheck = prev[ip] ?? 0;
           return { ...prev, [ip]: lastCheck + 1 };
         });
+
         addMessage(
-          `Error scanning ${ip}. Attempt ${statusChecksSinceLastContact[ip]}. Error: ${error}`
+          `Error scanning ${ip}. Attempt ${
+            JSON.stringify(statusChecksSinceLastContact) ?? "unk"
+          }. Error: ${error}`
         );
       }
     }
