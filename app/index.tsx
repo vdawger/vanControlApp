@@ -33,6 +33,8 @@ type LastSuccessfulStatusCheckProps = {
   [ip: string]: number;
 };
 
+const MAX_STATUS_CHECKS_SINCE_LAST_CONTACT = 14;
+
 export default function Index() {
   const [boardIps, setBoardIps] = useState<string[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -169,14 +171,14 @@ export default function Index() {
   });
 
   const getStatusUpdates = async () => {
-    if (boardIps.length === 0) return;
+    if (boardIps.length === 0 || scanning) return;
     addMessage("Checking statuses for: " + boardIps.join(", "));
     for (const ip of boardIps) {
       const url = `http://${ip}/status`;
 
       if (
         statusChecksSinceLastContact[ip] &&
-        statusChecksSinceLastContact[ip] > 7
+        statusChecksSinceLastContact[ip] > MAX_STATUS_CHECKS_SINCE_LAST_CONTACT
       ) {
         addMessage(`Have not heard from ${ip} in 7 checks. Removing.`);
         setBoardIps((prev) => {
@@ -218,14 +220,14 @@ export default function Index() {
 
         addMessage(
           `Error scanning ${ip}. Attempt ${
-            JSON.stringify(statusChecksSinceLastContact) ?? "unk"
+            JSON.stringify(statusChecksSinceLastContact[ip]) ?? "unk"
           }. Error: ${error}`
         );
       }
     }
   };
 
-  // Load data from storage
+  // scanning every second for status updates:
   useEffect(() => {
     const intervalId = setInterval(getStatusUpdates, 1000);
 
