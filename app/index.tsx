@@ -123,7 +123,7 @@ export default function Index() {
       }
 
       // Update every 5 IPs or at the end
-      if (failedIps.length % 5 === 0 || i === LAST_IP) {
+      if (failedIps.length % 1 === 0 || i === LAST_IP) {
         addMessage(`No response from ${failedIps.join(", ")}`);
         setScanProgress((prev) => {
           const newProgress = Math.round(
@@ -270,14 +270,6 @@ export default function Index() {
       >
         {scanProgress < 100 ? <ProgressBar progress={scanProgress} /> : null}
 
-        <DraggableFlatList
-          data={buttons}
-          renderItem={renderButtonRow}
-          onDragEnd={onDragEnd}
-          scrollEnabled={true}
-          keyExtractor={(item) => item.uuid}
-        />
-
         <View style={styles.buttonRow}>
           <WifiStatus addMessage={addMessage} />
           <MessageLogModal
@@ -295,6 +287,14 @@ export default function Index() {
             addMessage={addMessage}
           />
         </View>
+
+        <DraggableFlatList
+          data={buttons}
+          renderItem={renderButtonRow}
+          onDragEnd={onDragEnd}
+          scrollEnabled={true}
+          keyExtractor={(item) => item.uuid}
+        />
       </View>
     </GestureHandlerRootView>
   );
