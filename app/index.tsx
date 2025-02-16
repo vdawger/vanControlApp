@@ -53,14 +53,14 @@ export default function Index() {
     setButtons((prevButtons) => {
       const newButtons: RelayButtonProps[] = [...prevButtons];
 
-      Object.entries(newRelayStatuses).forEach(([relayId, value], index) => {
+      Object.entries(newRelayStatuses).forEach(([relayId, value]) => {
         const existingButton = newButtons.find(
           (button) => button.id === relayId
         );
         if (existingButton) {
           existingButton.turnedOn = !!value;
         } else {
-          const uuid = toggleIpAddress + "-" + index.toString();
+          const uuid = `${toggleIpAddress}-${relayId}`;
           newButtons.push({
             id: relayId,
             uuid,
@@ -75,19 +75,19 @@ export default function Index() {
     });
   };
 
-  const FIRST_IP = 12;
-  const LAST_IP = 24;
+  const FIRST_SUBNET = 12;
+  const LAST_SUBNET = 24;
 
   const scanSubnet = async () => {
     const subnet = "192.168.10.";
     const failedIps = [];
     const ipsToScan = [
-      FIRST_IP - 1,
-      FIRST_IP,
-      FIRST_IP + 1,
-      LAST_IP - 1,
-      LAST_IP,
-      LAST_IP + 1,
+      FIRST_SUBNET - 1,
+      FIRST_SUBNET,
+      FIRST_SUBNET + 1,
+      LAST_SUBNET - 1,
+      LAST_SUBNET,
+      LAST_SUBNET + 1,
     ];
     addMessage(`Scanning ${ipsToScan.length} IPs on subnet ${subnet}XXX`);
     setScanning((p) => true);
@@ -96,8 +96,8 @@ export default function Index() {
       (p) => ({} as LastSuccessfulStatusCheckProps)
     );
 
-    for (let i of ipsToScan) {
-      const ip = `${subnet}${i}`;
+    for (let lastSubnet of ipsToScan) {
+      const ip = `${subnet}${lastSubnet}`;
       const url = `http://${ip}/status`;
 
       try {
@@ -122,16 +122,14 @@ export default function Index() {
         failedIps.push(ip);
       }
 
-      // Update every 5 IPs or at the end
-      if (failedIps.length % 1 === 0 || i === LAST_IP) {
+      if (failedIps.length % 1 === 0 || lastSubnet === LAST_SUBNET) {
         addMessage(`No response from ${failedIps.join(", ")}`);
-        setScanProgress((prev) => {
-          const newProgress = Math.round(
-            ((i - FIRST_IP) / ipsToScan.length) * 100
-          );
-          return newProgress;
-        });
       }
+      setScanProgress((prev) => {
+        const index = ipsToScan.indexOf(lastSubnet);
+        const newProgress = Math.round((index / ipsToScan.length) * 100);
+        return newProgress;
+      });
     }
 
     setScanning((p) => false);
