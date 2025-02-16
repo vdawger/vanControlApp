@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { LogBox, StyleSheet, View } from "react-native";
 import DraggableFlatList, {
   DragEndParams,
   RenderItemParams,
@@ -23,6 +23,10 @@ import {
   useLoadSavedData,
 } from "./hooks/useLoadSavedData";
 import { useMessages } from "./hooks/useMessages";
+
+LogBox.ignoreLogs([
+  "[Reanimated] Tried to modify key", // Suppress specific Reanimated warning
+]);
 
 type UpdateButtonsWithStatusesProps = {
   boardIp: string;
@@ -234,7 +238,8 @@ export default function Index() {
   }, [boardIps, buttons, scanning]);
 
   const onDragEnd = ({ data }: DragEndParams<RelayButtonProps>) => {
-    setButtons(data);
+    const newButtons = data.map((button) => ({ ...button }));
+    setButtons(newButtons);
   };
 
   const renderButtonRow = ({
@@ -242,17 +247,19 @@ export default function Index() {
     drag,
   }: RenderItemParams<RelayButtonProps>) => {
     if (item.hidden) return null;
+    const buttonProps = { ...item };
+
     return (
       <View style={styles.buttonRow}>
         <DragIcon drag={drag} />
         <ButtonSettingsModal
-          button={item}
+          button={buttonProps}
           setButtons={setButtons}
           saveButtonState={saveButtonState}
-          modalTitle={idToReadable(item.id)}
+          modalTitle={idToReadable(buttonProps.id)}
           addMessage={addMessage}
         />
-        <RelayButton {...item} boardIps={boardIps} />
+        <RelayButton {...buttonProps} boardIps={boardIps} />
       </View>
     );
   };
