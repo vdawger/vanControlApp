@@ -268,8 +268,17 @@ export function useVanBle(
           setBoards((prev) => {
             const next = { ...prev };
             for (const b of saved) {
+              // Saved by an older version of the app, a board may lack newer fields (flags).
               if (!next[b.mac])
-                next[b.mac] = { ...b, connected: false, authOk: null, state: 0 };
+                next[b.mac] = {
+                  ...b,
+                  names: b.names ?? [],
+                  flags: b.flags ?? [],
+                  targets: b.targets ?? [],
+                  connected: false,
+                  authOk: null,
+                  state: 0,
+                };
             }
             return next;
           });

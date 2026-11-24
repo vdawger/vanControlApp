@@ -22,7 +22,7 @@ export type Board = {
 };
 
 export const hasFlag = (b: Board | undefined, index: number, flag: number) =>
-  !!b && ((b.flags[index] ?? 0) & flag) !== 0;
+  !!b && ((b.flags?.[index] ?? 0) & flag) !== 0;
 
 export type BoardMap = { [mac: string]: Board };
 
