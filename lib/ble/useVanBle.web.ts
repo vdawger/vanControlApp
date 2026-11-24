@@ -28,6 +28,7 @@ const relay = (
   connected: true,
   authOk: true,
   flags: names.map((n) => (n === "water_pump" ? 2 : 0)),
+  flagsOnBoard: true,
   ...extra,
 });
 
@@ -51,7 +52,8 @@ const DEMO: BoardMap = Object.fromEntries(
       "a0b1c2d3e4f7",
       "van-rear",
       ["water_filter_power", "unused", "skip_filter", "tank_to_fill_and_house", "none", "none", "none", "none"],
-      { connected: false, authOk: null }
+      // Still on firmware that cannot store NO/NC and confirm.
+      { connected: false, authOk: null, flags: [], flagsOnBoard: false }
     ),
     {
       ...relay("a0b1c2d3e4f8", "switchesFront", []),
@@ -86,12 +88,17 @@ export function useVanBle(
     mac: string,
     op: number,
     args: CommandArgs,
-    what: string
+    what: string,
+    quiet = false
   ) => {
     const a = typeof args === "function" ? args(1) : args;
     await new Promise((r) => setTimeout(r, 150));
     if (!passcode) {
-      addMessage(`${what}: no passcode set`);
+      if (!quiet) addMessage(`${what}: no passcode set`);
+      return false;
+    }
+    if (op === OP.setRelayFlags && !boards[mac]?.flagsOnBoard) {
+      if (!quiet) addMessage(`${what}: board rejected the value`);
       return false;
     }
     patch(mac, (b) => {

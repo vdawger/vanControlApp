@@ -25,7 +25,7 @@ import {
   RELAY_FLAG,
   utf8Encode,
 } from "@/lib/ble/protocol";
-import { Board, boardStatus, hasFlag } from "@/lib/ble/types";
+import { Board, boardStatus } from "@/lib/ble/types";
 import { ButtonPref } from "@/lib/storage";
 import { color, radius, readable, space, type } from "@/lib/theme";
 import { useVan } from "@/lib/VanContext";
@@ -183,7 +183,9 @@ export default function Home() {
   const renderTile = ({ item }: { item: ButtonPref }) => {
     const board = boards[item.mac];
     const relayOn = ((board.state >> item.index) & 1) === 1;
-    const nc = hasFlag(board, item.index, RELAY_FLAG.nc);
+    const flags = van.switchFlags(item);
+    const nc = (flags & RELAY_FLAG.nc) !== 0;
+    const confirm = (flags & RELAY_FLAG.confirm) !== 0;
     return (
       <View style={styles.cell}>
         <RelayTile
@@ -191,10 +193,10 @@ export default function Home() {
           boardName={board.name}
           relayOn={relayOn}
           normallyClosed={nc}
-          confirm={hasFlag(board, item.index, RELAY_FLAG.confirm)}
+          confirm={confirm}
           unavailable={UNAVAILABLE[boardStatus(board)]}
           onToggle={async () => {
-            if (hasFlag(board, item.index, RELAY_FLAG.confirm)) {
+            if (confirm) {
               setConfirming({ item, lit: nc ? !relayOn : relayOn });
               return true;
             }
@@ -214,8 +216,9 @@ export default function Home() {
 
   const renderEditRow = ({ item, drag, isActive }: RenderItemParams<ButtonPref>) => {
     const board = boards[item.mac];
-    const nc = hasFlag(board, item.index, RELAY_FLAG.nc);
-    const confirm = hasFlag(board, item.index, RELAY_FLAG.confirm);
+    const flags = van.switchFlags(item);
+    const nc = (flags & RELAY_FLAG.nc) !== 0;
+    const confirm = (flags & RELAY_FLAG.confirm) !== 0;
     return (
       <View style={[styles.row, isActive && styles.rowActive]}>
         <Pressable
@@ -287,8 +290,9 @@ export default function Home() {
               </Text>
               <Text style={type.dim}>
                 Names, NO/NC and confirm are saved on the board, so every phone
-                with the passcode gets them. Order and hidden switches are just
-                for this phone.
+                with the passcode gets them. On a board with older firmware,
+                NO/NC and confirm stay on this phone. Order and hidden switches
+                are always just for this phone.
               </Text>
             </View>
           }
@@ -342,18 +346,13 @@ export default function Home() {
         visible={!!settingsItem && !renaming}
         name={settingsItem ? nameOf(settingsItem) : ""}
         boardName={settingsBoard?.name ?? ""}
-        flags={settingsItem && settingsBoard ? settingsBoard.flags[settingsItem.index] ?? 0 : 0}
+        flags={settingsItem ? van.switchFlags(settingsItem) : 0}
+        flagsSavedOn={
+          !settingsBoard?.flagsOnBoard ? "phone" : settingsItem?.flagsPending ? "pending" : "board"
+        }
         hidden={!!settingsItem?.hidden}
         boardReady={!!settingsBoard && boardStatus(settingsBoard) === "ready"}
-        onSetFlags={(flags) =>
-          settingsItem &&
-          van.sendThenRefresh(
-            settingsItem.mac,
-            OP.setRelayFlags,
-            Uint8Array.of(settingsItem.index, flags),
-            "Switch settings"
-          )
-        }
+        onSetFlags={(flags) => settingsItem && van.setSwitchFlags(settingsItem, flags)}
         onRename={() => settingsItem && setRenaming(settingsItem)}
         onSetHidden={(hidden) => settingsItem && van.updateButton(settingsItem.uuid, { hidden })}
         onClose={() => setSettingsFor(null)}

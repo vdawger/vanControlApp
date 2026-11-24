@@ -78,6 +78,7 @@ export function useVanBle(
         state: 0,
         names: [],
         flags: [],
+        flagsOnBoard: false,
         targets: [],
         connected: false,
         authOk: null,
@@ -118,6 +119,7 @@ export function useVanBle(
       ota: info.ota,
       names: config.names,
       flags: config.flags,
+      flagsOnBoard: config.flagsOnBoard,
       targets: config.targets,
       state,
       connected: true,
@@ -349,16 +351,16 @@ export function useVanBle(
   }, [passcode]);
 
   /** Sends a command signed with the phone's passcode. Resolves true if the board accepted it. */
-  const send = async (mac: string, op: number, args: Args, what: string) => {
+  const send = async (mac: string, op: number, args: Args, what: string, quiet = false) => {
     const s = sessionFor(mac);
     const key = keyRef.current;
     if (!s || !key) {
-      log.current(`${what}: ${s ? "no passcode set" : "board not in range"}`);
+      if (!quiet) log.current(`${what}: ${s ? "no passcode set" : "board not in range"}`);
       return false;
     }
     const code = await sendWithKey(s, key, op, args);
     if (code === RESP.badAuth) patchBoard(mac, { authOk: false });
-    if (code !== RESP.ok) log.current(`${what}: ${respText(code)}`);
+    if (code !== RESP.ok && !quiet) log.current(`${what}: ${respText(code)}`);
     return code === RESP.ok;
   };
 
@@ -366,9 +368,10 @@ export function useVanBle(
     mac: string,
     op: number,
     args: Args,
-    what: string
+    what: string,
+    quiet = false
   ) => {
-    const ok = await send(mac, op, args, what);
+    const ok = await send(mac, op, args, what, quiet);
     const s = sessionFor(mac);
     if (ok && s) await refreshBoard(s).catch(() => undefined);
     return ok;

@@ -234,15 +234,23 @@ export type Target = { mac: string; relay: number };
 export function parseConfig(
   b: Uint8Array,
   type: number
-): { name: string; names: string[]; flags: number[]; targets: (Target | null)[] } {
+): {
+  name: string;
+  names: string[];
+  flags: number[];
+  /** The board sent a flags column, so it stores NO/NC and confirm itself. */
+  flagsOnBoard: boolean;
+  targets: (Target | null)[];
+} {
   const [name = "", ...rest] = utf8Decode(b).split("\n");
   if (type !== DEVICE_PANEL) {
-    // Each relay line is its name, then a tab and its RELAY_FLAG bits if any are set.
+    // Each relay line is its name, a tab and its RELAY_FLAG bits. Older firmware sends just the name.
     const lines = rest.map((line) => line.split("\t"));
     return {
       name,
       names: lines.map(([n]) => n),
       flags: lines.map(([, f]) => Number(f) || 0),
+      flagsOnBoard: lines.some((l) => l.length > 1),
       targets: [],
     };
   }
@@ -250,7 +258,7 @@ export function parseConfig(
     const [macHex, relay] = line.split(":");
     return macHex?.length === 12 ? { mac: macHex, relay: Number(relay) } : null;
   });
-  return { name, names: [], flags: [], targets };
+  return { name, names: [], flags: [], flagsOnBoard: false, targets };
 }
 
 export function respText(code: number): string {

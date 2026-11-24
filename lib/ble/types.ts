@@ -14,6 +14,8 @@ export type Board = {
   names: string[];
   /** RELAY_FLAG bits for each relay (relay boards), stored on the board. */
   flags: number[];
+  /** The board's firmware stores flags. If not, each phone keeps its own (ButtonPref.flags). */
+  flagsOnBoard?: boolean;
   /** What each switch drives (panels). */
   targets: (Target | null)[];
   connected: boolean;
@@ -21,8 +23,6 @@ export type Board = {
   authOk: boolean | null;
 };
 
-export const hasFlag = (b: Board | undefined, index: number, flag: number) =>
-  !!b && ((b.flags?.[index] ?? 0) & flag) !== 0;
 
 export type BoardMap = { [mac: string]: Board };
 
@@ -31,19 +31,22 @@ export type CommandArgs = Uint8Array | ((counter: number) => Uint8Array);
 export type VanBle = {
   boards: BoardMap;
   bluetoothOn: boolean;
-  /** Sends a command signed with the phone's passcode. Resolves true if the board accepted it. */
+  /** Sends a command signed with the phone's passcode. Resolves true if the board accepted it.
+   *  Failures are reported in the activity messages unless quiet. */
   send: (
     mac: string,
     op: number,
     args: CommandArgs,
-    what: string
+    what: string,
+    quiet?: boolean
   ) => Promise<boolean>;
   /** Same, then re-reads the board's names and settings. */
   sendThenRefresh: (
     mac: string,
     op: number,
     args: CommandArgs,
-    what: string
+    what: string,
+    quiet?: boolean
   ) => Promise<boolean>;
   toggleRelay: (mac: string, index: number) => Promise<boolean>;
   /** Gives a board with no passcode the phone's passcode. */

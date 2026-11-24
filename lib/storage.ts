@@ -11,6 +11,10 @@ export type ButtonPref = {
   /** No longer used: normally open/closed is stored on the board. Older saved data still has it. */
   reversed?: boolean;
   hidden: boolean;
+  /** This phone's NO/NC and confirm (RELAY_FLAG bits), used while the board cannot store them. */
+  flags?: number;
+  /** flags changed here and not yet saved on the board: sent when it can take them. */
+  flagsPending?: boolean;
 };
 
 const BUTTONS_KEY = "buttonPrefs";

@@ -1,8 +1,8 @@
 // Everything the screens share: the Bluetooth link to the boards, this phone's passcode,
 // how the relay buttons are arranged, and the activity log.
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { DEVICE_RELAY } from "./ble/protocol";
-import { VanBle } from "./ble/types";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { DEVICE_RELAY, OP } from "./ble/protocol";
+import { boardStatus, VanBle } from "./ble/types";
 import { useVanBle } from "./ble/useVanBle";
 import {
   ButtonPref,
@@ -22,6 +22,10 @@ type Van = VanBle & {
   buttons: ButtonPref[];
   setButtons: React.Dispatch<React.SetStateAction<ButtonPref[]>>;
   updateButton: (uuid: string, patch: Partial<ButtonPref>) => void;
+  /** A switch's NO/NC and confirm (RELAY_FLAG bits): the board's when it stores them, else this phone's. */
+  switchFlags: (button: ButtonPref) => number;
+  /** Saves NO/NC and confirm on this phone, and on the board when it can store them. */
+  setSwitchFlags: (button: ButtonPref, flags: number) => void;
   messages: Message[];
   clearMessages: () => void;
   resetPhone: () => Promise<void>;
@@ -95,6 +99,50 @@ export function VanProvider({ children }: { children: React.ReactNode }) {
       prev.map((b) => (b.uuid === uuid ? { ...b, ...patch } : b))
     );
 
+  const switchFlags = (button: ButtonPref) => {
+    const board = boards[button.mac];
+    const fromBoard = board?.flags?.[button.index] ?? 0;
+    if (board?.flagsOnBoard && !button.flagsPending) return fromBoard;
+    return button.flags ?? fromBoard;
+  };
+
+  // Clears the pending mark once the board holds exactly what this phone set.
+  const markSaved = (uuid: string, flags: number) =>
+    setButtons((prev) =>
+      prev.map((b) => (b.uuid === uuid && b.flags === flags ? { ...b, flagsPending: false } : b))
+    );
+
+  const saveFlagsOnBoard = (button: ButtonPref, flags: number) =>
+    ble
+      .sendThenRefresh(
+        button.mac,
+        OP.setRelayFlags,
+        Uint8Array.of(button.index, flags),
+        "Switch settings",
+        true // a board on older firmware refuses: the phone's copy is enough
+      )
+      .then((ok) => ok && markSaved(button.uuid, flags));
+
+  const setSwitchFlags = (button: ButtonPref, flags: number) => {
+    updateButton(button.uuid, { flags, flagsPending: true });
+    const board = boards[button.mac];
+    if (board && boardStatus(board) === "ready") saveFlagsOnBoard(button, flags);
+  };
+
+  // Settings made while a board was away or on older firmware go to it once it can store them.
+  const uploadTried = useRef(new Set<string>());
+  useEffect(() => {
+    for (const button of buttons) {
+      if (!button.flagsPending || button.flags === undefined) continue;
+      const board = boards[button.mac];
+      if (!board?.flagsOnBoard || boardStatus(board) !== "ready") continue;
+      const attempt = `${button.uuid}:${button.flags}`;
+      if (uploadTried.current.has(attempt)) continue;
+      uploadTried.current.add(attempt);
+      saveFlagsOnBoard(button, button.flags);
+    }
+  }, [boards, buttons]);
+
   const resetPhone = async () => {
     await clearEverything().catch((e) => addMessage(`Reset failed: ${e}`));
     setPasscodeState(null);
@@ -113,6 +161,8 @@ export function VanProvider({ children }: { children: React.ReactNode }) {
         buttons,
         setButtons,
         updateButton,
+        switchFlags,
+        setSwitchFlags,
         messages,
         clearMessages,
         resetPhone,

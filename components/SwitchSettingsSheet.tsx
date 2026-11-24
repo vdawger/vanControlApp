@@ -10,10 +10,13 @@ type Props = {
   visible: boolean;
   name: string;
   boardName: string;
-  /** RELAY_FLAG bits as the board last reported them. */
+  /** RELAY_FLAG bits in effect for this switch. */
   flags: number;
+  /** Where NO/NC and confirm live: on the board, on this phone only (board firmware too old),
+   *  or on this phone until the board is back in range. */
+  flagsSavedOn: "board" | "phone" | "pending";
   hidden: boolean;
-  /** Board in range and accepting this phone's passcode: needed for anything saved on the board. */
+  /** Board in range and accepting this phone's passcode: needed to rename. */
   boardReady: boolean;
   onSetFlags: (flags: number) => void;
   onRename: () => void;
@@ -27,6 +30,7 @@ export function SwitchSettingsSheet({
   name,
   boardName,
   flags,
+  flagsSavedOn,
   hidden,
   boardReady,
   onSetFlags,
@@ -43,10 +47,14 @@ export function SwitchSettingsSheet({
     <Sheet visible={visible} title={readable(name)} onClose={onClose}>
       <Text style={[type.dim, styles.sub]}>{boardName}</Text>
 
-      <Text style={type.label}>Saved on the board · every phone</Text>
-      {!boardReady && (
+      <Text style={type.label}>
+        {flagsSavedOn === "board" ? "Saved on the board · every phone" : "Saved on this phone"}
+      </Text>
+      {flagsSavedOn !== "board" && (
         <Text style={[type.dim, styles.note]}>
-          The board is out of range or locked, so these can't be changed right now.
+          {flagsSavedOn === "phone"
+            ? `${boardName}'s firmware can't store these yet, so this phone keeps them. Other phones set their own until the board is updated.`
+            : `Goes to ${boardName} next time it's in range, for every phone.`}
         </Text>
       )}
 
@@ -65,17 +73,13 @@ export function SwitchSettingsSheet({
             return (
               <Pressable
                 key={label}
-                disabled={!boardReady || selected}
+                disabled={selected}
                 onPress={() => setFlag(RELAY_FLAG.nc, label === "NC")}
                 hitSlop={4}
                 accessibilityRole="radio"
-                accessibilityState={{ selected, disabled: !boardReady }}
+                accessibilityState={{ selected }}
                 accessibilityLabel={label === "NO" ? "Normally open" : "Normally closed"}
-                style={[
-                  styles.segmentItem,
-                  selected && styles.segmentSelected,
-                  !boardReady && { opacity: 0.4 },
-                ]}
+                style={[styles.segmentItem, selected && styles.segmentSelected]}
               >
                 <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
                   {label}
@@ -93,7 +97,6 @@ export function SwitchSettingsSheet({
         </View>
         <Switch
           value={confirm}
-          disabled={!boardReady}
           onValueChange={(on) => setFlag(RELAY_FLAG.confirm, on)}
           trackColor={{ true: color.on, false: color.border }}
           thumbColor={color.text}
@@ -101,6 +104,7 @@ export function SwitchSettingsSheet({
         />
       </View>
 
+      <Text style={[type.label, styles.section]}>Name · saved on the board</Text>
       <Pressable
         style={styles.row}
         onPress={onRename}
@@ -110,6 +114,7 @@ export function SwitchSettingsSheet({
       >
         <View style={styles.rowText}>
           <Text style={[type.body, !boardReady && { opacity: 0.4 }]}>Rename</Text>
+          {!boardReady && <Text style={type.dim}>Needs the board in range.</Text>}
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={color.textFaint} />
       </Pressable>
