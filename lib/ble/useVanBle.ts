@@ -17,31 +17,10 @@ import {
   parseResp,
   RESP,
   respText,
-  Target,
   toBase64,
   UUID,
 } from "./protocol";
-
-export type Board = {
-  /** The board's WiFi MAC as hex: stable across phones, unlike the Bluetooth id. */
-  mac: string;
-  name: string;
-  type: number;
-  count: number;
-  claimed: boolean;
-  ota: boolean;
-  /** Bit i set = relay i on (relay board) or switch i pressed (panel). */
-  state: number;
-  /** Relay names (relay boards). */
-  names: string[];
-  /** What each switch drives (panels). */
-  targets: (Target | null)[];
-  connected: boolean;
-  /** true/false once our passcode has been checked against the board; null before that. */
-  authOk: boolean | null;
-};
-
-export type BoardMap = { [mac: string]: Board };
+import { Board, BoardMap, CommandArgs as Args, VanBle } from "./types";
 
 type Session = {
   deviceId: string;
@@ -53,8 +32,6 @@ type Session = {
   queue: Promise<unknown>;
   subs: Subscription[];
 };
-
-type Args = Uint8Array | ((counter: number) => Uint8Array);
 
 const STORAGE_KEY = "knownBoards";
 const RESPONSE_TIMEOUT_MS = 2500;
@@ -77,7 +54,7 @@ async function requestPermissions(): Promise<boolean> {
 export function useVanBle(
   passcode: string | null,
   addMessage: (s: string) => void
-) {
+): VanBle {
   const [boards, setBoards] = useState<BoardMap>({});
   const [bluetoothOn, setBluetoothOn] = useState(false);
   const [loaded, setLoaded] = useState(false);

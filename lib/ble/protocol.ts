@@ -43,7 +43,7 @@ export const RESP = {
 };
 
 export const MIN_PASSCODE_LENGTH = 8;
-export const MAX_NAME_LENGTH = 20;
+export const MAX_NAME_LENGTH = 24;
 
 // ---- bytes ----
 

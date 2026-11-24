@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 /** How one relay button is shown on this phone. The list order is the display order. */
 export type ButtonPref = {
@@ -27,8 +28,12 @@ export async function saveButtonPrefs(prefs: ButtonPref[]) {
   await AsyncStorage.setItem(BUTTONS_KEY, JSON.stringify(prefs));
 }
 
+// The phone's secure store has no browser equivalent; the web build is only a screen preview.
+const web = Platform.OS === "web";
+
 export async function loadPasscode(): Promise<string | null> {
   try {
+    if (web) return await AsyncStorage.getItem(PASSCODE_KEY);
     return await SecureStore.getItemAsync(PASSCODE_KEY);
   } catch {
     return null;
@@ -36,10 +41,11 @@ export async function loadPasscode(): Promise<string | null> {
 }
 
 export async function savePasscode(passcode: string) {
+  if (web) return AsyncStorage.setItem(PASSCODE_KEY, passcode);
   await SecureStore.setItemAsync(PASSCODE_KEY, passcode);
 }
 
 export async function clearEverything() {
   await AsyncStorage.clear();
-  await SecureStore.deleteItemAsync(PASSCODE_KEY);
+  if (!web) await SecureStore.deleteItemAsync(PASSCODE_KEY);
 }
