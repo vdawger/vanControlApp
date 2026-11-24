@@ -39,7 +39,24 @@
           "backgroundColor": "#000000"
         }
       ],
-      ["expo-build-properties", {"android":{"usesCleartextTraffic":true}}]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-secure-store",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [],
+          "bluetoothAlwaysPermission": "Allow Van Switches to use Bluetooth to find and control the van's relay boards.",
+          "neverForLocation": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

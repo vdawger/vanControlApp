@@ -8,35 +8,17 @@ import {
   View,
 } from "react-native";
 import { buttonStyles } from "../componentStyles/buttonStyles";
-import { saveButtonState } from "../hooks/useLoadSavedData";
-import { RelayButtonProps } from "./RelayButton";
 
 interface UnhideButtonsModalProps {
-  buttons: RelayButtonProps[];
-  setButtons: React.Dispatch<React.SetStateAction<RelayButtonProps[]>>;
-  addMessage: (s: string) => void;
+  numberOfHiddenButtons: number;
+  unhideButtons: () => void;
 }
 
 export const UnhideButtonsModal: FC<UnhideButtonsModalProps> = ({
-  buttons,
-  setButtons,
-  addMessage,
+  numberOfHiddenButtons,
+  unhideButtons,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
-
-  const unhideButtons = () => {
-    setButtons((prevButtons) => {
-      const newButtons = prevButtons.map((button) => {
-        return { ...button, hidden: false };
-      });
-      saveButtonState(newButtons, addMessage);
-      return newButtons;
-    });
-  };
-
-  const numberOfHiddenButtons = buttons.filter(
-    (button) => button.hidden
-  )?.length;
 
   return (
     <View style={{ alignItems: "center", flex: 0.5 }}>

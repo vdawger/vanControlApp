@@ -18,13 +18,13 @@
    ```
 
 ## App
-Scans all ips in the local network and displays all buttons for the devices that are online. 
-The buttons control relays. 
-Buttons can be reversed (on is off and off is on).
-Buttons can be hidden.
-Buttons can be reordered.
-Buttons can be renamed.
-Time start and stop can be set for each button.
+Finds every van board in Bluetooth range and shows a button for each relay. No WiFi needed.
+Set the shared passcode once (Boards button); it works with every board that has the same passcode.
+New boards, and switch panels, get the passcode from the Boards screen. Switch panels are mapped to relays there too.
+Buttons can be reversed (on is off and off is on), hidden, reordered and renamed (names are stored on the board).
+
+Bluetooth needs a development build (`npx expo run:ios` / `npx expo run:android`), not Expo Go.
+The wire format is in `app/ble/protocol.ts`; the firmware's copy is `esp32_24v_van_controller/include/proto.h`.
 
 ## Learn more
 

@@ -5,261 +5,132 @@ import DraggableFlatList, {
   RenderItemParams,
 } from "react-native-draggable-flatlist";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { DEVICE_RELAY, OP, utf8Encode } from "./ble/protocol";
+import { useVanBle } from "./ble/useVanBle";
+import { BoardsModal } from "./components/BoardsModal";
 import { ButtonSettingsModal } from "./components/ButtonSettingsModal";
 import { DragIcon } from "./components/DragIcon";
 import { MessageLogModal } from "./components/MessageLogModal";
-import ProgressBar from "./components/ProgressBar";
-import RelayButton, {
-  idToReadable,
-  RelayButtonProps,
-} from "./components/RelayButton";
+import RelayButton, { idToReadable } from "./components/RelayButton";
 import { ResetModal } from "./components/ResetModal";
 import { UnhideButtonsModal } from "./components/UnhideButtonsModal";
-import WifiStatus from "./components/WifiStatus";
 import {
-  clearLocalStorage,
-  saveBoardIps,
-  saveButtonState,
-  useLoadSavedData,
-} from "./hooks/useLoadSavedData";
+  ButtonPref,
+  clearEverything,
+  loadButtonPrefs,
+  loadPasscode,
+  saveButtonPrefs,
+  savePasscode,
+} from "./hooks/storage";
 import { useMessages } from "./hooks/useMessages";
 
 LogBox.ignoreLogs([
   "[Reanimated] Tried to modify key", // Suppress specific Reanimated warning
 ]);
 
-type UpdateButtonsWithStatusesProps = {
-  boardIp: string;
-  relaysRaw: { [s: string]: number };
-};
-
-type LastSuccessfulStatusCheckProps = {
-  [ip: string]: number;
-};
-
-const MAX_STATUS_CHECKS_SINCE_LAST_CONTACT = 14;
-
 export default function Index() {
-  const [boardIps, setBoardIps] = useState<string[]>([]);
-  const [scanning, setScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [buttons, setButtons] = useState<RelayButtonProps[]>([]);
-  const [dataLoaded, setDataLoaded] = useState(false);
-  const [statusChecksSinceLastContact, setStatusChecksSinceLastContact] =
-    useState<LastSuccessfulStatusCheckProps>({});
-
   const { messages, addMessage, clearMessages } = useMessages();
+  const [passcode, setPasscodeState] = useState<string | null>(null);
+  const [buttons, setButtons] = useState<ButtonPref[]>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const updateButtonsWithStatus = ({
-    boardIp: toggleIpAddress,
-    relaysRaw: newRelayStatuses,
-  }: UpdateButtonsWithStatusesProps) => {
-    setButtons((prevButtons) => {
-      const newButtons: RelayButtonProps[] = [...prevButtons];
+  const ble = useVanBle(passcode, addMessage);
+  const { boards } = ble;
 
-      Object.entries(newRelayStatuses).forEach(([relayId, value]) => {
-        const existingButton = newButtons.find(
-          (button) => button.id === relayId
-        );
-        if (existingButton) {
-          existingButton.turnedOn = !!value;
-        } else {
-          const uuid = `${toggleIpAddress}-${relayId}`;
-          newButtons.push({
-            id: relayId,
-            uuid,
-            turnedOn: !!value,
-            toggleIpAddress,
-            reversed: false,
-            hidden: false,
-          });
+  useEffect(() => {
+    (async () => {
+      setPasscodeState(await loadPasscode());
+      setButtons(await loadButtonPrefs());
+      setLoaded(true);
+    })();
+  }, []);
+
+  // Order, hidden and reversed are this phone's choices: save every change, including drags.
+  useEffect(() => {
+    if (!loaded) return;
+    saveButtonPrefs(buttons).catch((e) =>
+      addMessage(`Could not save buttons: ${e}`)
+    );
+  }, [buttons, loaded]);
+
+  // A relay we have not seen before gets a button at the end of the list.
+  useEffect(() => {
+    if (!loaded) return;
+    setButtons((prev) => {
+      const known = new Set(prev.map((b) => b.uuid));
+      const added: ButtonPref[] = [];
+      for (const board of Object.values(boards)) {
+        if (board.type !== DEVICE_RELAY) continue;
+        for (let index = 0; index < board.count; index++) {
+          const uuid = `${board.mac}-${index}`;
+          if (!known.has(uuid))
+            added.push({
+              uuid,
+              mac: board.mac,
+              index,
+              reversed: false,
+              hidden: false,
+            });
         }
-      });
-      return newButtons;
+      }
+      return added.length ? [...prev, ...added] : prev;
     });
+  }, [boards, loaded]);
+
+  const setPasscode = (value: string) => {
+    setPasscodeState(value);
+    savePasscode(value).catch((e) =>
+      addMessage(`Could not save passcode: ${e}`)
+    );
   };
 
-  const FIRST_SUBNET = 12;
-  const LAST_SUBNET = 24;
-
-  const scanSubnet = async () => {
-    const subnet = "192.168.10.";
-    const failedIps = [];
-    const ipsToScan = [
-      FIRST_SUBNET - 1,
-      FIRST_SUBNET,
-      FIRST_SUBNET + 1,
-      LAST_SUBNET - 1,
-      LAST_SUBNET,
-      LAST_SUBNET + 1,
-    ];
-    addMessage(`Scanning ${ipsToScan.length} IPs on subnet ${subnet}XXX`);
-    setScanning((p) => true);
-    setScanProgress((p) => 0);
-    setStatusChecksSinceLastContact(
-      (p) => ({} as LastSuccessfulStatusCheckProps)
+  const updateButton = (uuid: string, patch: Partial<ButtonPref>) =>
+    setButtons((prev) =>
+      prev.map((b) => (b.uuid === uuid ? { ...b, ...patch } : b))
     );
 
-    for (let lastSubnet of ipsToScan) {
-      const ip = `${subnet}${lastSubnet}`;
-      const url = `http://${ip}/status`;
-
-      try {
-        const response = await fetch(url);
-        if (response.status === 200) {
-          addMessage(`Scan found ${ip} is a board`);
-          const relaysRaw = await response.json();
-          updateButtonsWithStatus({
-            boardIp: ip,
-            relaysRaw: relaysRaw,
-          });
-          setBoardIps((prev) => {
-            const newIps = [...prev, ip];
-            saveBoardIps(newIps, addMessage);
-            return newIps;
-          });
-          setStatusChecksSinceLastContact((prev) => {
-            return { ...prev, [ip]: 0 };
-          });
-        }
-      } catch (error) {
-        failedIps.push(ip);
-      }
-
-      if (failedIps.length % 1 === 0 || lastSubnet === LAST_SUBNET) {
-        addMessage(`No response from ${failedIps.join(", ")}`);
-      }
-      setScanProgress((prev) => {
-        const index = ipsToScan.indexOf(lastSubnet);
-        const newProgress = Math.round((index / ipsToScan.length) * 100);
-        return newProgress;
-      });
-    }
-
-    setScanning((p) => false);
-    setScanProgress((p) => 100);
-  };
-
   const handleReset = async () => {
-    addMessage("Resetting storage, ips, and buttons");
-    clearLocalStorage(addMessage);
-    setBoardIps([]);
+    await clearEverything().catch((e) => addMessage(`Reset failed: ${e}`));
+    setPasscodeState(null);
     setButtons([]);
-    setStatusChecksSinceLastContact({});
-    addMessage("Reset complete. Scanning again.");
-    scanSubnet();
+    ble.forgetBoards();
+    addMessage("Reset complete");
   };
 
-  const forgetBoards = async () => {
-    addMessage("Forgetting boards and rescanning");
-    saveBoardIps([], addMessage);
-    setBoardIps([]);
+  const onDragEnd = ({ data }: DragEndParams<ButtonPref>) => setButtons(data);
 
-    scanSubnet();
-  };
-
-  useLoadSavedData({
-    addMessage,
-    boardIps,
-    setBoardIps,
-    buttons,
-    setButtons,
-    scanning,
-    scanProgress,
-    scan: scanSubnet,
-    dataLoaded,
-    setDataLoaded,
-    setScanProgress,
-  });
-
-  const getStatusUpdates = async () => {
-    if (boardIps.length === 0 || scanning) return;
-    addMessage("Checking statuses for: " + boardIps.join(", "));
-    for (const ip of boardIps) {
-      const url = `http://${ip}/status`;
-
-      if (
-        statusChecksSinceLastContact[ip] &&
-        statusChecksSinceLastContact[ip] > MAX_STATUS_CHECKS_SINCE_LAST_CONTACT
-      ) {
-        addMessage(`Have not heard from ${ip} in 7 checks. Removing.`);
-        setBoardIps((prev) => {
-          // without the one we haven't heard from:
-          return prev.filter((savedBoardIp) => savedBoardIp !== ip);
-        });
-        continue;
-      }
-
-      try {
-        const response = await fetch(url);
-        if (response.status === 200) {
-          const relaysRaw = await response.json();
-          updateButtonsWithStatus({
-            boardIp: ip,
-            relaysRaw: relaysRaw,
-          });
-
-          setStatusChecksSinceLastContact((prev) => {
-            return { ...prev, [ip]: 0 };
-          });
-        } else {
-          setStatusChecksSinceLastContact((prev) => {
-            const lastCheck = prev[ip] ?? 0;
-            return { ...prev, [ip]: lastCheck + 1 };
-          });
-
-          addMessage(
-            `${ip} fetch error attempt #${
-              statusChecksSinceLastContact[ip]
-            }: ${JSON.stringify(response).slice(0, 100)}`
-          );
-        }
-      } catch (error) {
-        setStatusChecksSinceLastContact((prev) => {
-          const lastCheck = prev[ip] ?? 0;
-          return { ...prev, [ip]: lastCheck + 1 };
-        });
-
-        addMessage(
-          `Error scanning ${ip}. Attempt ${
-            JSON.stringify(statusChecksSinceLastContact[ip]) ?? "unk"
-          }. Error: ${error}`
-        );
-      }
-    }
-  };
-
-  // scanning every second for status updates:
-  useEffect(() => {
-    const intervalId = setInterval(getStatusUpdates, 1000);
-
-    // Clean up the interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [boardIps, buttons, scanning]);
-
-  const onDragEnd = ({ data }: DragEndParams<RelayButtonProps>) => {
-    const newButtons = data.map((button) => ({ ...button }));
-    setButtons(newButtons);
-  };
-
-  const renderButtonRow = ({
-    item,
-    drag,
-  }: RenderItemParams<RelayButtonProps>) => {
+  const renderButtonRow = ({ item, drag }: RenderItemParams<ButtonPref>) => {
     if (item.hidden) return null;
-    const buttonProps = { ...item };
+    const board = boards[item.mac];
+    const name = board?.names[item.index] ?? `relay ${item.index + 1}`;
+    const usable = !!board?.connected && board.authOk === true;
 
     return (
       <View style={styles.buttonRow}>
         <DragIcon drag={drag} />
         <ButtonSettingsModal
-          button={buttonProps}
-          setButtons={setButtons}
-          saveButtonState={saveButtonState}
-          modalTitle={idToReadable(buttonProps.id)}
-          addMessage={addMessage}
+          modalTitle={`${idToReadable(name)} (${board?.name ?? "unknown board"})`}
+          name={name}
+          reversed={item.reversed}
+          canRename={usable}
+          onReverse={() => updateButton(item.uuid, { reversed: !item.reversed })}
+          onHide={() => updateButton(item.uuid, { hidden: true })}
+          onRename={(newName) =>
+            ble.sendThenRefresh(
+              item.mac,
+              OP.setRelayName,
+              Uint8Array.of(item.index, ...utf8Encode(newName)),
+              "Rename"
+            )
+          }
         />
-        <RelayButton {...buttonProps} boardIps={boardIps} />
+        <RelayButton
+          label={name}
+          turnedOn={!!board && ((board.state >> item.index) & 1) === 1}
+          reversed={item.reversed}
+          unavailable={!usable}
+          onToggle={() => ble.toggleRelay(item.mac, item.index)}
+        />
       </View>
     );
   };
@@ -269,27 +140,34 @@ export default function Index() {
       <View
         style={{
           height: "100%",
-          paddingBottom: scanProgress ? 160 : 140,
+          paddingBottom: 140,
           backgroundColor: "black",
         }}
       >
-        {scanProgress < 100 ? <ProgressBar progress={scanProgress} /> : null}
-
         <View style={styles.buttonRow}>
-          <WifiStatus addMessage={addMessage} />
-          <MessageLogModal
-            messages={messages}
-            scanProgress={scanProgress}
-            clearMessages={clearMessages}
+          <BoardsModal
+            boards={boards}
+            passcode={passcode}
+            bluetoothOn={ble.bluetoothOn}
+            setPasscode={setPasscode}
+            send={ble.send}
+            sendThenRefresh={ble.sendThenRefresh}
+            claim={ble.claim}
+            adoptFromPasscode={ble.adoptFromPasscode}
           />
+          <MessageLogModal messages={messages} clearMessages={clearMessages} />
         </View>
 
         <View style={styles.buttonRow}>
-          <ResetModal handleReset={handleReset} forgetBoards={forgetBoards} />
+          <ResetModal
+            handleReset={handleReset}
+            forgetBoards={ble.forgetBoards}
+          />
           <UnhideButtonsModal
-            buttons={buttons}
-            setButtons={setButtons}
-            addMessage={addMessage}
+            numberOfHiddenButtons={buttons.filter((b) => b.hidden).length}
+            unhideButtons={() =>
+              setButtons((prev) => prev.map((b) => ({ ...b, hidden: false })))
+            }
           />
         </View>
 
@@ -299,6 +177,7 @@ export default function Index() {
           onDragEnd={onDragEnd}
           scrollEnabled={true}
           keyExtractor={(item) => item.uuid}
+          extraData={boards}
         />
       </View>
     </GestureHandlerRootView>
@@ -311,9 +190,4 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-evenly",
   },
-  expand: {
-    flex: 1,
-  },
 });
-
-export type { UpdateButtonsWithStatusesProps };

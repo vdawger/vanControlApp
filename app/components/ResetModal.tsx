@@ -55,11 +55,11 @@ export const ResetModal: FC<ResetModal> = ({ handleReset, forgetBoards }) => {
                   setModalVisible(false);
                 }}
               >
-                <Text style={[buttonStyles.text]}>Rescan For Boards</Text>
+                <Text style={[buttonStyles.text]}>Forget Boards</Text>
               </TouchableHighlight>
             </View>
             <Text style={[buttonStyles.text, buttonStyles.spaceAfter]}>
-              This will forget the known boards and rescan the network.
+              This will forget boards that are out of range. Boards in range stay.
             </Text>
 
             <View style={buttonStyles.buttonRow}>
@@ -78,8 +78,8 @@ export const ResetModal: FC<ResetModal> = ({ handleReset, forgetBoards }) => {
               </TouchableHighlight>
             </View>
             <Text style={[buttonStyles.text, buttonStyles.spaceAfter]}>
-              This will reset all hidden buttons to be visible and require a
-              network rescan.
+              This will forget the passcode, button order, hidden buttons and
+              known boards on this phone. Boards keep their passcode.
             </Text>
 
             <View style={buttonStyles.buttonRow}>

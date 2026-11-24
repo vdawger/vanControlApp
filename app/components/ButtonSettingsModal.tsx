@@ -1,65 +1,51 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { FC, useState } from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Text,
+  TextInput,
   TouchableHighlight,
   TouchableOpacity,
   View,
 } from "react-native";
+import { MAX_NAME_LENGTH } from "../ble/protocol";
 import { buttonStyles } from "../componentStyles/buttonStyles";
-import { RelayButtonProps } from "./RelayButton";
 
 interface ButtonSettingsModalProps {
-  button: RelayButtonProps;
   modalTitle: string;
-  setButtons: React.Dispatch<React.SetStateAction<RelayButtonProps[]>>;
-  saveButtonState: (
-    buttons: RelayButtonProps[],
-    addMessage: (s: string) => void
-  ) => void;
-  addMessage: (s: string) => void;
+  name: string;
+  reversed: boolean;
+  /** Renaming is stored on the board, so it needs the board in range. */
+  canRename: boolean;
+  onReverse: () => void;
+  onHide: () => void;
+  onRename: (name: string) => void;
 }
 
 export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
-  button,
   modalTitle,
-  setButtons,
-  saveButtonState,
-  addMessage,
+  name,
+  reversed,
+  canRename,
+  onReverse,
+  onHide,
+  onRename,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [newName, setNewName] = useState(name);
 
-  const hideButtonRow = (uuid: string) => {
-    setButtons((prevButtons) => {
-      const newButtons = prevButtons.map((button) => {
-        if (button.uuid === uuid) {
-          return { ...button, hidden: true };
-        }
-        return button;
-      });
-      saveButtonState(newButtons, addMessage);
-      return newButtons;
-    });
+  const open = () => {
+    setNewName(name);
+    setModalVisible(true);
   };
-
-  const handleReverseToggle = (uuid: string) => {
-    setButtons((prevButtons) => {
-      const newButtons = prevButtons.map((button) => {
-        if (button.uuid !== uuid) return button;
-        return { ...button, reversed: !button.reversed };
-      });
-      saveButtonState(newButtons, addMessage);
-      return newButtons;
-    });
-  };
+  const trimmed = newName.trim();
+  const renameReady = canRename && trimmed.length > 0 && trimmed !== name;
 
   return (
     <View>
-      <TouchableHighlight
-        style={[buttonStyles.relayIcon]}
-        onPress={(e) => setModalVisible(true)}
-      >
+      <TouchableHighlight style={[buttonStyles.relayIcon]} onPress={open}>
         <Ionicons name="settings-outline" size={50} color="white" />
       </TouchableHighlight>
 
@@ -69,9 +55,44 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={buttonStyles.modalAtBottomOfScreen}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={buttonStyles.modalAtBottomOfScreen}
+        >
           <View style={buttonStyles.modalView}>
             <Text style={buttonStyles.titleText}>{modalTitle}</Text>
+
+            <TextInput
+              style={buttonStyles.input}
+              value={newName}
+              onChangeText={setNewName}
+              maxLength={MAX_NAME_LENGTH}
+              editable={canRename}
+              placeholder="Name"
+              placeholderTextColor="grey"
+              autoCorrect={false}
+            />
+            <View style={buttonStyles.buttonRow}>
+              <TouchableOpacity
+                style={[
+                  buttonStyles.button,
+                  buttonStyles.fullWidth,
+                  renameReady
+                    ? buttonStyles.primary
+                    : buttonStyles.disabledButton,
+                ]}
+                disabled={!renameReady}
+                onPress={() => {
+                  onRename(trimmed);
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={[buttonStyles.text]}>
+                  {canRename ? "Rename" : "Rename (board not in range)"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={buttonStyles.buttonRow}>
               <TouchableOpacity
                 style={[
@@ -79,13 +100,13 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
                   buttonStyles.primary,
                   buttonStyles.fullWidth,
                 ]}
-                onPress={(e) => {
-                  handleReverseToggle(button.uuid);
+                onPress={() => {
+                  onReverse();
                   setModalVisible(false);
                 }}
               >
                 <Text style={[buttonStyles.text]}>
-                  {button.reversed ? "Make On" : "Make Off"} = On
+                  {reversed ? "Make On" : "Make Off"} = On
                 </Text>
               </TouchableOpacity>
             </View>
@@ -97,7 +118,10 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
                   buttonStyles.danger,
                   buttonStyles.fullWidth,
                 ]}
-                onPress={(e) => hideButtonRow(button.uuid)}
+                onPress={() => {
+                  onHide();
+                  setModalVisible(false);
+                }}
               >
                 <Text style={[buttonStyles.text]}>Hide</Text>
               </TouchableOpacity>
@@ -110,13 +134,13 @@ export const ButtonSettingsModal: FC<ButtonSettingsModalProps> = ({
                   buttonStyles.cancel,
                   buttonStyles.fullWidth,
                 ]}
-                onPress={(e) => setModalVisible(false)}
+                onPress={() => setModalVisible(false)}
               >
                 <Text style={[buttonStyles.text]}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

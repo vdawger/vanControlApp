@@ -69,6 +69,35 @@ export const buttonStyles = StyleSheet.create({
     padding: 10,
     width: "100%",
   },
+  input: {
+    borderWidth: 1,
+    borderColor: "grey",
+    borderRadius: 10,
+    color: "white",
+    padding: 10,
+    marginBottom: 10,
+    fontSize: 16,
+  },
+  card: {
+    borderWidth: 1,
+    borderColor: "grey",
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 8,
+  },
+  smallButton: {
+    paddingHorizontal: 10,
+    height: 40,
+    marginRight: 6,
+    marginTop: 6,
+  },
+  wrapRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  dimText: {
+    color: "#bbbbbb",
+  },
   titleText: {
     fontSize: 20,
     color: "white",

@@ -3,17 +3,14 @@ import { FC, useState } from "react";
 import { FlatList, Modal, Text, TouchableOpacity, View } from "react-native";
 import { buttonStyles } from "../componentStyles/buttonStyles";
 import { Message } from "../hooks/useMessages";
-import ProgressBar from "./ProgressBar";
 
 interface MessageLogModalProps {
   messages: Message[];
-  scanProgress: number;
   clearMessages: () => void;
 }
 
 export const MessageLogModal: FC<MessageLogModalProps> = ({
   messages,
-  scanProgress,
   clearMessages,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
@@ -47,11 +44,6 @@ export const MessageLogModal: FC<MessageLogModalProps> = ({
       >
         <View style={buttonStyles.modalAtBottomOfScreen}>
           <View style={buttonStyles.modalView}>
-            <Text style={buttonStyles.titleText}>Network Scanned</Text>
-            <ProgressBar progress={scanProgress} />
-            <Text style={buttonStyles.text}>
-              {scanProgress === 100 ? "Scan complete" : "Scanning..."}
-            </Text>
             <Text style={buttonStyles.titleText}>Message Log</Text>
             <FlatList
               data={messages}
