@@ -26,8 +26,18 @@ export const OP = {
   reboot: 0x06,
   identify: 0x07,
   ping: 0x08,
+  /** index(1) flags(1): RELAY_FLAG bits, stored on the board. */
+  setRelayFlags: 0x09,
   claim: 0x10,
   setSwitch: 0x20,
+};
+
+/** Per-relay settings kept on the board so every phone with the passcode sees them. */
+export const RELAY_FLAG = {
+  /** Wired normally closed: the load is on while the relay is off. */
+  nc: 0x01,
+  /** Ask before switching it from the app. */
+  confirm: 0x02,
 };
 
 export const ACTION = { off: 0, on: 1, toggle: 2 };
@@ -224,14 +234,23 @@ export type Target = { mac: string; relay: number };
 export function parseConfig(
   b: Uint8Array,
   type: number
-): { name: string; names: string[]; targets: (Target | null)[] } {
+): { name: string; names: string[]; flags: number[]; targets: (Target | null)[] } {
   const [name = "", ...rest] = utf8Decode(b).split("\n");
-  if (type !== DEVICE_PANEL) return { name, names: rest, targets: [] };
+  if (type !== DEVICE_PANEL) {
+    // Each relay line is its name, then a tab and its RELAY_FLAG bits if any are set.
+    const lines = rest.map((line) => line.split("\t"));
+    return {
+      name,
+      names: lines.map(([n]) => n),
+      flags: lines.map(([, f]) => Number(f) || 0),
+      targets: [],
+    };
+  }
   const targets = rest.map((line) => {
     const [macHex, relay] = line.split(":");
     return macHex?.length === 12 ? { mac: macHex, relay: Number(relay) } : null;
   });
-  return { name, names: [], targets };
+  return { name, names: [], flags: [], targets };
 }
 
 export function respText(code: number): string {

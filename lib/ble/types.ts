@@ -12,12 +12,17 @@ export type Board = {
   state: number;
   /** Relay names (relay boards). */
   names: string[];
+  /** RELAY_FLAG bits for each relay (relay boards), stored on the board. */
+  flags: number[];
   /** What each switch drives (panels). */
   targets: (Target | null)[];
   connected: boolean;
   /** true/false once our passcode has been checked against the board; null before that. */
   authOk: boolean | null;
 };
+
+export const hasFlag = (b: Board | undefined, index: number, flag: number) =>
+  !!b && ((b.flags[index] ?? 0) & flag) !== 0;
 
 export type BoardMap = { [mac: string]: Board };
 

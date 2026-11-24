@@ -27,6 +27,7 @@ const relay = (
   targets: [],
   connected: true,
   authOk: true,
+  flags: names.map((n) => (n === "water_pump" ? 2 : 0)),
   ...extra,
 });
 
@@ -110,6 +111,8 @@ export function useVanBle(
           return {
             names: b.names.map((n, i) => (i === a[0] ? utf8Decode(a.slice(1)) : n)),
           };
+        case OP.setRelayFlags:
+          return { flags: b.flags.map((v, i) => (i === a[0] ? a[1] : v)) };
         case OP.ota:
           return { ota: a[0] !== 0 };
         case OP.setSwitch: {

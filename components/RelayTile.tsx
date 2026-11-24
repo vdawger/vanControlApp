@@ -18,7 +18,10 @@ type RelayTileProps = {
   /** What the board reports for the relay. */
   relayOn: boolean;
   /** Show the tile lit when the relay is off (for things wired the other way round). */
-  reversed: boolean;
+  /** Wired normally closed: the load is on while the relay is off. */
+  normallyClosed: boolean;
+  /** Asks before switching; shown as a small shield. */
+  confirm?: boolean;
   /** Why it cannot be used right now, if it cannot. */
   unavailable: string | null;
   onToggle: () => Promise<boolean>;
@@ -38,13 +41,14 @@ export function RelayTile({
   name,
   boardName,
   relayOn,
-  reversed,
+  normallyClosed,
+  confirm = false,
   unavailable,
   onToggle,
 }: RelayTileProps) {
   const [busy, setBusy] = useState(false);
   // Lit always follows what the board last reported, never a guess.
-  const lit = !unavailable && (reversed ? !relayOn : relayOn);
+  const lit = !unavailable && (normallyClosed ? !relayOn : relayOn);
   const fg = lit ? color.onText : color.text;
   const sub = lit ? color.onText : color.textDim;
 
@@ -75,7 +79,12 @@ export function RelayTile({
       ]}
     >
       <View style={styles.top}>
-        <MaterialCommunityIcons name={iconFor(name, lit)} size={26} color={fg} />
+        <View style={styles.icons}>
+          <MaterialCommunityIcons name={iconFor(name, lit)} size={26} color={fg} />
+          {confirm ? (
+            <MaterialCommunityIcons name="shield-check-outline" size={16} color={sub} />
+          ) : null}
+        </View>
         {busy ? (
           <ActivityIndicator size="small" color={fg} />
         ) : (
@@ -113,6 +122,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
+  icons: { flexDirection: "row", alignItems: "center", gap: space.xs },
   state: { fontSize: 13, fontWeight: "600" },
   name: { fontSize: 16, fontWeight: "600", marginTop: space.md },
   board: { fontSize: 12, marginTop: 2 },

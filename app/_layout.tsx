@@ -18,7 +18,8 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: color.bg },
           }}
         >
-          <Stack.Screen name="index" options={{ title: "Van" }} />
+          {/* Home draws its own header: header buttons do not receive taps on Android with the new architecture. */}
+          <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen
             name="settings/index"
             options={{ title: "Boards & setup" }}

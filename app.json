@@ -10,12 +10,15 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.vdawger.vanswitches"
+      "bundleIdentifier": "com.vdawger.vanswitches",
+      "icon": "./assets/images/icon.png"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundImage": "./assets/images/adaptive-bg.png",
+        "monochromeImage": "./assets/images/monochrome-icon.png",
+        "backgroundColor": "#FFB52E"
       },
       "permissions": [
         "android.permission.INTERNET",

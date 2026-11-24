@@ -8,7 +8,8 @@ export type ButtonPref = {
   uuid: string;
   mac: string;
   index: number;
-  reversed: boolean;
+  /** No longer used: normally open/closed is stored on the board. Older saved data still has it. */
+  reversed?: boolean;
   hidden: boolean;
 };
 

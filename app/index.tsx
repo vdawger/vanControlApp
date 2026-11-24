@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -12,17 +12,20 @@ import {
 import DraggableFlatList, {
   RenderItemParams,
 } from "react-native-draggable-flatlist";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, IconName } from "@/components/Button";
 import { RelayTile } from "@/components/RelayTile";
 import { PromptSheet } from "@/components/Sheet";
+import { ConfirmToggleSheet, SwitchSettingsSheet } from "@/components/SwitchSettingsSheet";
 import {
   DEVICE_RELAY,
   MAX_NAME_LENGTH,
   MIN_PASSCODE_LENGTH,
   OP,
+  RELAY_FLAG,
   utf8Encode,
 } from "@/lib/ble/protocol";
-import { Board, boardStatus } from "@/lib/ble/types";
+import { Board, boardStatus, hasFlag } from "@/lib/ble/types";
 import { ButtonPref } from "@/lib/storage";
 import { color, radius, readable, space, type } from "@/lib/theme";
 import { useVan } from "@/lib/VanContext";
@@ -38,9 +41,12 @@ const UNAVAILABLE: { [status: string]: string | null } = {
 export default function Home() {
   const van = useVan();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [editing, setEditing] = useState(false);
   const [askPasscode, setAskPasscode] = useState(false);
   const [renaming, setRenaming] = useState<ButtonPref | null>(null);
+  const [settingsFor, setSettingsFor] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<{ item: ButtonPref; lit: boolean } | null>(null);
 
   const { boards, buttons, passcode } = van;
   const relayBoards = Object.values(boards).filter((b) => b.type === DEVICE_RELAY);
@@ -54,15 +60,21 @@ export default function Home() {
   const shown = buttons.filter((b) => !b.hidden && boards[b.mac]);
   const hiddenCount = buttons.filter((b) => b.hidden).length;
 
-  const headerButton = (icon: IconName, label: string, onPress: () => void) => (
+  const headerButton = (
+    icon: IconName,
+    label: string,
+    onPress: () => void,
+    text?: string
+  ) => (
     <Pressable
       onPress={onPress}
-      hitSlop={10}
+      hitSlop={12}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={styles.headerButton}
+      style={({ pressed }) => [styles.headerButton, pressed && { opacity: 0.6 }]}
     >
-      <MaterialCommunityIcons name={icon} size={24} color={color.text} />
+      <MaterialCommunityIcons name={icon} size={22} color={color.text} />
+      {text ? <Text style={styles.headerButtonText}>{text}</Text> : null}
     </Pressable>
   );
 
@@ -162,7 +174,7 @@ export default function Home() {
         </>
       ) : (
         <Text style={[type.dim, styles.emptyText]}>
-          Every button is hidden. Tap the pencil to show some.
+          Every switch is hidden. Tap Arrange to show some.
         </Text>
       )}
     </View>
@@ -170,98 +182,91 @@ export default function Home() {
 
   const renderTile = ({ item }: { item: ButtonPref }) => {
     const board = boards[item.mac];
+    const relayOn = ((board.state >> item.index) & 1) === 1;
+    const nc = hasFlag(board, item.index, RELAY_FLAG.nc);
     return (
       <View style={styles.cell}>
         <RelayTile
           name={nameOf(item)}
           boardName={board.name}
-          relayOn={((board.state >> item.index) & 1) === 1}
-          reversed={item.reversed}
+          relayOn={relayOn}
+          normallyClosed={nc}
+          confirm={hasFlag(board, item.index, RELAY_FLAG.confirm)}
           unavailable={UNAVAILABLE[boardStatus(board)]}
-          onToggle={() => van.toggleRelay(item.mac, item.index)}
+          onToggle={async () => {
+            if (hasFlag(board, item.index, RELAY_FLAG.confirm)) {
+              setConfirming({ item, lit: nc ? !relayOn : relayOn });
+              return true;
+            }
+            return van.toggleRelay(item.mac, item.index);
+          }}
         />
       </View>
     );
   };
 
-  const iconToggle = (
-    icon: IconName,
-    label: string,
-    active: boolean,
-    onPress: () => void,
-    disabled = false
-  ) => (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={[styles.rowIcon, active && styles.rowIconActive, disabled && { opacity: 0.3 }]}
-    >
-      <MaterialCommunityIcons
-        name={icon}
-        size={20}
-        color={active ? color.onText : color.text}
-      />
-    </Pressable>
+  const badge = (label: string, icon?: IconName) => (
+    <View key={label} style={styles.badge}>
+      {icon ? <MaterialCommunityIcons name={icon} size={12} color={color.textDim} /> : null}
+      <Text style={styles.badgeText}>{label}</Text>
+    </View>
   );
 
   const renderEditRow = ({ item, drag, isActive }: RenderItemParams<ButtonPref>) => {
     const board = boards[item.mac];
-    const usable = !!board && boardStatus(board) === "ready";
+    const nc = hasFlag(board, item.index, RELAY_FLAG.nc);
+    const confirm = hasFlag(board, item.index, RELAY_FLAG.confirm);
     return (
-      <View style={[styles.row, isActive && styles.rowActive, item.hidden && styles.rowHidden]}>
+      <View style={[styles.row, isActive && styles.rowActive]}>
         <Pressable
-          onLongPress={drag}
-          delayLongPress={120}
+          onPressIn={drag}
+          disabled={isActive}
           hitSlop={8}
-          accessibilityLabel="Hold and drag to reorder"
+          accessibilityLabel="Drag to reorder"
           style={styles.handle}
         >
           <MaterialCommunityIcons name="drag" size={26} color={color.textDim} />
         </Pressable>
-        <View style={styles.rowText}>
-          <Text style={type.body} numberOfLines={1}>
-            {readable(nameOf(item))}
-          </Text>
-          <Text style={type.dim} numberOfLines={1}>
-            {board?.name ?? "Unknown board"}
-            {item.reversed ? " · lit when off" : ""}
-          </Text>
-        </View>
-        {iconToggle("pencil-outline", "Rename", false, () => setRenaming(item), !usable)}
-        {iconToggle("swap-vertical", "Show lit when off", item.reversed, () =>
-          van.updateButton(item.uuid, { reversed: !item.reversed })
-        )}
-        {iconToggle(
-          item.hidden ? "eye-off-outline" : "eye-outline",
-          item.hidden ? "Show" : "Hide",
-          false,
-          () => van.updateButton(item.uuid, { hidden: !item.hidden })
-        )}
+        <Pressable
+          style={[styles.rowMain, item.hidden && styles.rowHidden]}
+          onPress={() => setSettingsFor(item.uuid)}
+          accessibilityRole="button"
+          accessibilityLabel={`${readable(nameOf(item))} settings`}
+        >
+          <View style={styles.rowText}>
+            <Text style={type.body} numberOfLines={1}>
+              {readable(nameOf(item))}
+            </Text>
+            <View style={styles.badges}>
+              <Text style={type.dim} numberOfLines={1}>
+                {board?.name ?? "Unknown board"}
+              </Text>
+              {nc ? badge("NC") : null}
+              {confirm ? badge("Confirm", "shield-check-outline") : null}
+              {item.hidden ? badge("Hidden", "eye-off-outline") : null}
+            </View>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color={color.textFaint} />
+        </Pressable>
       </View>
     );
   };
 
+  const settingsItem = buttons.find((b) => b.uuid === settingsFor) ?? null;
+  const settingsBoard = settingsItem ? boards[settingsItem.mac] : undefined;
+
   return (
-    <View style={styles.screen}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <View style={styles.headerButtons}>
-              {headerButton(
-                editing ? "check" : "pencil-outline",
-                editing ? "Done arranging" : "Arrange buttons",
-                () => setEditing(!editing)
-              )}
-              {headerButton("cog-outline", "Boards and setup", () =>
-                router.push("/settings")
-              )}
-            </View>
-          ),
-        }}
-      />
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={type.title}>{editing ? "Arrange" : "Van"}</Text>
+        <View style={styles.headerButtons}>
+          {editing
+            ? headerButton("check", "Done arranging", () => setEditing(false), "Done")
+            : headerButton("tune-variant", "Arrange switches", () => setEditing(true), "Arrange")}
+          {!editing &&
+            headerButton("cog-outline", "Boards and setup", () => router.push("/settings"))}
+        </View>
+      </View>
 
       {editing ? (
         <DraggableFlatList
@@ -275,11 +280,17 @@ export default function Home() {
           extraData={boards}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
-            <Text style={[type.dim, { marginBottom: space.md }]}>
-              Hold the handle to reorder. Names are saved on the board, so every
-              phone sees them. Order, hidden and “lit when off” are just for
-              this phone.
-            </Text>
+            <View style={styles.legend}>
+              <Text style={type.dim}>
+                Drag the handle to reorder. Tap a switch to rename it, set it
+                normally open or closed, ask before switching, or hide it.
+              </Text>
+              <Text style={type.dim}>
+                Names, NO/NC and confirm are saved on the board, so every phone
+                with the passcode gets them. Order and hidden switches are just
+                for this phone.
+              </Text>
+            </View>
           }
         />
       ) : (
@@ -295,7 +306,7 @@ export default function Home() {
           ListFooterComponent={
             hiddenCount > 0 && shown.length > 0 ? (
               <Text style={[type.dim, styles.footer]}>
-                {`${hiddenCount} hidden. Tap the pencil to show them.`}
+                {`${hiddenCount} hidden. Tap Arrange to show them.`}
               </Text>
             ) : null
           }
@@ -327,6 +338,33 @@ export default function Home() {
         }}
         onClose={() => setRenaming(null)}
       />
+      <SwitchSettingsSheet
+        visible={!!settingsItem && !renaming}
+        name={settingsItem ? nameOf(settingsItem) : ""}
+        boardName={settingsBoard?.name ?? ""}
+        flags={settingsItem && settingsBoard ? settingsBoard.flags[settingsItem.index] ?? 0 : 0}
+        hidden={!!settingsItem?.hidden}
+        boardReady={!!settingsBoard && boardStatus(settingsBoard) === "ready"}
+        onSetFlags={(flags) =>
+          settingsItem &&
+          van.sendThenRefresh(
+            settingsItem.mac,
+            OP.setRelayFlags,
+            Uint8Array.of(settingsItem.index, flags),
+            "Switch settings"
+          )
+        }
+        onRename={() => settingsItem && setRenaming(settingsItem)}
+        onSetHidden={(hidden) => settingsItem && van.updateButton(settingsItem.uuid, { hidden })}
+        onClose={() => setSettingsFor(null)}
+      />
+      <ConfirmToggleSheet
+        visible={!!confirming}
+        name={confirming ? nameOf(confirming.item) : ""}
+        lit={!!confirming?.lit}
+        onConfirm={() => confirming && van.toggleRelay(confirming.item.mac, confirming.item.index)}
+        onClose={() => setConfirming(null)}
+      />
     </View>
   );
 }
@@ -337,8 +375,30 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: color.bg },
   listContent: { padding: space.lg - GAP / 2, paddingBottom: space.xl * 2 },
   cell: { flex: 1, maxWidth: "50%", padding: GAP / 2 },
-  headerButtons: { flexDirection: "row", gap: space.lg, paddingRight: space.xs },
-  headerButton: { padding: 2 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.sm,
+  },
+  headerButtons: { flexDirection: "row", gap: space.sm },
+  headerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.xs,
+    minHeight: 40,
+    minWidth: 40,
+    justifyContent: "center",
+    paddingHorizontal: space.sm + 2,
+    borderRadius: radius.pill,
+    backgroundColor: color.surface,
+    borderWidth: 1,
+    borderColor: color.border,
+  },
+  headerButtonText: { color: color.text, fontSize: 14, fontWeight: "600" },
+  legend: { gap: space.sm, marginHorizontal: GAP / 2, marginBottom: space.md },
   status: {
     flexDirection: "row",
     alignItems: "center",
@@ -378,13 +438,17 @@ const styles = StyleSheet.create({
   rowHidden: { opacity: 0.5 },
   rowText: { flex: 1 },
   handle: { padding: space.xs },
-  rowIcon: {
-    width: 38,
-    height: 38,
+  rowMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: space.sm },
+  badges: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.xs, marginTop: 2 },
+  badge: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: radius.sm,
-    backgroundColor: color.surfaceRaised,
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: color.border,
   },
-  rowIconActive: { backgroundColor: color.on },
+  badgeText: { color: color.textDim, fontSize: 11, fontWeight: "600" },
 });

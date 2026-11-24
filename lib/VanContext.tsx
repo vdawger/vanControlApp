@@ -52,7 +52,7 @@ export function VanProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // Order, hidden and reversed are this phone's choices: save every change, including drags.
+  // Order and hidden are this phone's choices: save every change, including drags.
   useEffect(() => {
     if (!loaded) return;
     saveButtonPrefs(buttons).catch((e) =>
@@ -75,7 +75,6 @@ export function VanProvider({ children }: { children: React.ReactNode }) {
               uuid,
               mac: board.mac,
               index,
-              reversed: false,
               hidden: false,
             });
         }
