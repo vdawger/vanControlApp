@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  BackHandler,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,31 +20,48 @@ type SheetProps = {
   children: React.ReactNode;
 };
 
-/** A panel that slides up from the bottom. Tap outside to close. */
+/** A panel that slides up from the bottom. Tap outside or press Back to close.
+ *
+ *  Drawn over the screen it belongs to rather than in a native Modal: on Android (new
+ *  architecture) a Modal opened after a drag in Arrange was laid out squashed or off screen.
+ *  So put sheets at the top level of a screen, not inside a ScrollView. */
 export function Sheet({ visible, title, onClose, children }: SheetProps) {
+  const slide = useRef(new Animated.Value(0)).current;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    if (!visible) return;
+    slide.setValue(0);
+    Animated.timing(slide, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      closeRef.current();
+      return true;
+    });
+    return () => back.remove();
+  }, [visible]);
+
+  if (!visible) return null;
   return (
-    <Modal
-      animationType="slide"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={styles.overlay}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.fill}
+      <Animated.View style={[styles.backdrop, { opacity: slide }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+      </Animated.View>
+      <Animated.View
+        accessibilityViewIsModal
+        style={[
+          styles.sheet,
+          { transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }) }] },
+        ]}
       >
-        <Pressable
-          style={styles.backdrop}
-          onPress={onClose}
-          accessibilityLabel="Close"
-        />
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <Text style={[type.heading, styles.title]}>{title}</Text>
-          {children}
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <View style={styles.grabber} />
+        <Text style={[type.heading, styles.title]}>{title}</Text>
+        {children}
+      </Animated.View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -115,7 +133,7 @@ export function PromptSheet({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, justifyContent: "flex-end" },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end", zIndex: 100, elevation: 100 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: color.backdrop },
   sheet: {
     backgroundColor: color.surface,

@@ -217,85 +217,89 @@ export default function Settings() {
   const log = showAllLog ? van.messages : van.messages.slice(0, 5);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={type.label}>Passcode</Text>
-      <View style={styles.card}>
-        <View style={styles.cardHead}>
-          <MaterialCommunityIcons
-            name={passcode ? "key-variant" : "key-alert-outline"}
-            size={24}
-            color={passcode ? color.text : color.warn}
-          />
-          <View style={{ flex: 1 }}>
-            <Text style={type.heading}>{passcode ? "Passcode is set" : "No passcode yet"}</Text>
-            <Text style={type.dim}>
-              One passcode works with every board that shares it. No pairing.
-            </Text>
-          </View>
-        </View>
-        <View style={styles.cardBody}>
-          <Button
-            small={!!passcode}
-            kind={passcode ? "quiet" : "primary"}
-            label={passcode ? "Change" : "Set passcode"}
-            onPress={askPasscode}
-          />
-        </View>
-      </View>
-
-      <Text style={type.label}>Boards</Text>
-      {!van.bluetoothOn && (
-        <Text style={[type.dim, styles.gapBelow]}>
-          Bluetooth is off or this app is not allowed to use it.
-        </Text>
-      )}
-      {all.length === 0 ? (
+    <View style={styles.screen}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <Text style={type.label}>Passcode</Text>
         <View style={styles.card}>
-          <Text style={type.dim}>
-            No boards found yet. Boards in Bluetooth range show up here on
-            their own.
-          </Text>
-        </View>
-      ) : (
-        all.map(renderBoard)
-      )}
-
-      <Text style={type.label}>Activity</Text>
-      <View style={styles.card}>
-        {log.length === 0 ? (
-          <Text style={type.dim}>Nothing yet.</Text>
-        ) : (
-          log.map((m) => (
-            <Text key={m.id} style={[type.dim, { marginBottom: space.xs }]}>
-              <Text style={{ color: color.textFaint }}>{m.time}  </Text>
-              {m.text}
-            </Text>
-          ))
-        )}
-        {van.messages.length > 5 && (
-          <View style={[styles.actions, { marginTop: space.sm }]}>
-            <Button
-              small
-              kind="quiet"
-              label={showAllLog ? "Show less" : `Show all ${van.messages.length}`}
-              onPress={() => setShowAllLog(!showAllLog)}
+          <View style={styles.cardHead}>
+            <MaterialCommunityIcons
+              name={passcode ? "key-variant" : "key-alert-outline"}
+              size={24}
+              color={passcode ? color.text : color.warn}
             />
-            <Button small kind="quiet" label="Clear" onPress={van.clearMessages} />
+            <View style={{ flex: 1 }}>
+              <Text style={type.heading}>{passcode ? "Passcode is set" : "No passcode yet"}</Text>
+              <Text style={type.dim}>
+                One passcode works with every board that shares it. No pairing.
+              </Text>
+            </View>
           </View>
-        )}
-      </View>
+          <View style={styles.cardBody}>
+            <Button
+              small={!!passcode}
+              kind={passcode ? "quiet" : "primary"}
+              label={passcode ? "Change" : "Set passcode"}
+              onPress={askPasscode}
+            />
+          </View>
+        </View>
 
-      <Text style={type.label}>This phone</Text>
-      <View style={[styles.card, styles.actions]}>
-        <Button
-          small
-          kind="quiet"
-          label={`Forget ${awayCount} out-of-range board${awayCount === 1 ? "" : "s"}`}
-          disabled={awayCount === 0}
-          onPress={van.forgetBoards}
-        />
-        <Button small kind="danger" label="Reset this phone" onPress={() => setConfirmReset(true)} />
-      </View>
+        <Text style={type.label}>Boards</Text>
+        {!van.bluetoothOn && (
+          <Text style={[type.dim, styles.gapBelow]}>
+            Bluetooth is off or this app is not allowed to use it.
+          </Text>
+        )}
+        {all.length === 0 ? (
+          <View style={styles.card}>
+            <Text style={type.dim}>
+              No boards found yet. Boards in Bluetooth range show up here on
+              their own.
+            </Text>
+          </View>
+        ) : (
+          all.map(renderBoard)
+        )}
+
+        <Text style={type.label}>Activity</Text>
+        <View style={styles.card}>
+          {log.length === 0 ? (
+            <Text style={type.dim}>Nothing yet.</Text>
+          ) : (
+            log.map((m) => (
+              <Text key={m.id} style={[type.dim, { marginBottom: space.xs }]}>
+                <Text style={{ color: color.textFaint }}>{m.time}  </Text>
+                {m.text}
+              </Text>
+            ))
+          )}
+          {van.messages.length > 5 && (
+            <View style={[styles.actions, { marginTop: space.sm }]}>
+              <Button
+                small
+                kind="quiet"
+                label={showAllLog ? "Show less" : `Show all ${van.messages.length}`}
+                onPress={() => setShowAllLog(!showAllLog)}
+              />
+              <Button small kind="quiet" label="Clear" onPress={van.clearMessages} />
+            </View>
+          )}
+        </View>
+
+        <Text style={type.label}>This phone</Text>
+        <View style={[styles.card, styles.actions]}>
+          <Button
+            small
+            kind="quiet"
+            label={`Forget ${awayCount} out-of-range board${awayCount === 1 ? "" : "s"}`}
+            disabled={awayCount === 0}
+            onPress={van.forgetBoards}
+          />
+          <Button small kind="danger" label="Reset this phone" onPress={() => setConfirmReset(true)} />
+        </View>
+      </ScrollView>
+
+      {/* Sheets sit outside the ScrollView so they cover the screen, not the scrolled content. */}
 
       <PromptSheet
         visible={!!prompt}
@@ -357,7 +361,7 @@ export default function Settings() {
           <Button kind="quiet" label="Cancel" onPress={() => setConfirmReset(false)} />
         </View>
       </Sheet>
-    </ScrollView>
+    </View>
   );
 }
 
