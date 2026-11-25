@@ -1,9 +1,10 @@
 // Browser stand-in for useVanBle. Browsers cannot use the app's Bluetooth module, so on web
 // (npx expo start --web) the app runs against made-up boards. This is for working on the screens only.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ACTION,
   DEVICE_PANEL,
+  DEVICE_POWER,
   DEVICE_RELAY,
   OP,
   utf8Decode,
@@ -33,6 +34,7 @@ const relay = (
 });
 
 const MAC_24V = "a0b1c2d3e4f5";
+const CERBO = "c0619ab5ecb3";
 
 const DEMO: BoardMap = Object.fromEntries(
   [
@@ -70,6 +72,32 @@ const DEMO: BoardMap = Object.fromEntries(
       count: 6,
       targets: [null, null, null, null, null, null],
     },
+    {
+      ...relay(CERBO, "VanCerbo", []),
+      type: DEVICE_POWER,
+      count: 0,
+      power: {
+        soc: 90.6,
+        volts: 52.74,
+        batteryWatts: -52,
+        acInWatts: 0,
+        acOutWatts: 174,
+        systemState: 9,
+        amps: -1,
+        minutesLeft: 3966,
+        batteryTemp: 18,
+        acInL1: 0,
+        acOutL1: 80,
+        acInSource: 240,
+        mode: 3,
+        dcWatts: -176,
+        inverterAlarms: 2 << 8,
+        batteryAlarms: 0,
+        vebusError: 0,
+        acInLimit: 26,
+      },
+      powerAt: Date.now(),
+    },
   ].map((b) => [b.mac, b])
 );
 
@@ -78,6 +106,27 @@ export function useVanBle(
   addMessage: (s: string) => void
 ): VanBle {
   const [boards, setBoards] = useState<BoardMap>(DEMO);
+
+  // The demo Cerbo's loads wander a little, like the real thing.
+  useEffect(() => {
+    const t = setInterval(() => {
+      setBoards((prev) => {
+        const c = prev[CERBO];
+        if (!c?.power) return prev;
+        const out = Math.max(0, (c.power.acOutWatts ?? 0) + Math.round((Math.random() - 0.5) * 40));
+        const battery = -Math.round(out * 1.1 + 20);
+        return {
+          ...prev,
+          [CERBO]: {
+            ...c,
+            power: { ...c.power, acOutWatts: out, acOutL1: Math.round(out * 0.45), batteryWatts: battery, amps: battery / 52.7 },
+            powerAt: Date.now(),
+          },
+        };
+      });
+    }, 3000);
+    return () => clearInterval(t);
+  }, []);
 
   const patch = (mac: string, change: (b: Board) => Partial<Board>) =>
     setBoards((prev) =>

@@ -25,6 +25,7 @@ export default function RootLayout() {
             name="settings/index"
             options={{ title: "Boards & setup" }}
           />
+          <Stack.Screen name="power" options={{ title: "Power" }} />
         </Stack>
       </VanProvider>
     </GestureHandlerRootView>

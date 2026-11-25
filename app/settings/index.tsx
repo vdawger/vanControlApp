@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, IconName } from "@/components/Button";
@@ -6,6 +7,7 @@ import { PromptSheet, Sheet } from "@/components/Sheet";
 import {
   deriveKey,
   DEVICE_PANEL,
+  DEVICE_POWER,
   DEVICE_RELAY,
   fromHex,
   MAX_NAME_LENGTH,
@@ -39,6 +41,7 @@ type Prompt = {
 
 export default function Settings() {
   const van = useVan();
+  const router = useRouter();
   const { boards, passcode } = van;
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [picking, setPicking] = useState<{ mac: string; index: number } | null>(null);
@@ -79,7 +82,8 @@ export default function Settings() {
     const status = boardStatus(b);
     const ready = status === "ready";
     const isPanel = b.type === DEVICE_PANEL;
-    const icon: IconName = isPanel ? "gesture-tap-button" : "electric-switch";
+    const isPower = b.type === DEVICE_POWER;
+    const icon: IconName = isPower ? "battery-charging-high" : isPanel ? "gesture-tap-button" : "electric-switch";
     return (
       <View key={b.mac} style={styles.card}>
         <View style={styles.cardHead}>
@@ -87,7 +91,11 @@ export default function Settings() {
           <View style={{ flex: 1 }}>
             <Text style={type.heading}>{b.name || b.mac}</Text>
             <Text style={type.dim}>
-              {isPanel ? `Switch panel · ${b.count} switches` : `Relay board · ${b.count} relays`}
+              {isPower
+                ? "Cerbo GX · battery and inverter"
+                : isPanel
+                ? `Switch panel · ${b.count} switches`
+                : `Relay board · ${b.count} relays`}
             </Text>
           </View>
           <View style={[styles.pill, { borderColor: STATUS[status].tint }]}>
@@ -159,7 +167,27 @@ export default function Settings() {
           </View>
         )}
 
-        {ready && (
+        {ready && isPower && (
+          <View style={[styles.cardBody, styles.actions]}>
+            <Button small kind="quiet" icon="gauge" label="Open" onPress={() => router.push("/power")} />
+            <Button
+              small
+              kind="quiet"
+              icon="pencil-outline"
+              label="Rename"
+              onPress={() =>
+                setPrompt({
+                  title: "Rename Cerbo",
+                  initial: b.name,
+                  maxLength: MAX_NAME_LENGTH,
+                  onSubmit: (name) => van.sendThenRefresh(b.mac, OP.setName, utf8Encode(name), "Rename"),
+                })
+              }
+            />
+          </View>
+        )}
+
+        {ready && !isPower && (
           <View style={[styles.cardBody, styles.actions]}>
             <Button
               small

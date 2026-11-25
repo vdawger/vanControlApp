@@ -1,4 +1,4 @@
-import { Target } from "./protocol";
+import { Power, Target } from "./protocol";
 
 export type Board = {
   /** The board's WiFi MAC as hex: stable across phones, unlike the Bluetooth id. */
@@ -18,6 +18,10 @@ export type Board = {
   flagsOnBoard?: boolean;
   /** What each switch drives (panels). */
   targets: (Target | null)[];
+  /** Latest battery and inverter readings (Cerbo), merged from its broadcast pages. */
+  power?: Power;
+  /** When the latest readings arrived (ms since epoch). */
+  powerAt?: number;
   connected: boolean;
   /** true/false once our passcode has been checked against the board; null before that. */
   authOk: boolean | null;

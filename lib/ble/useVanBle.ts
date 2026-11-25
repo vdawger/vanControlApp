@@ -5,12 +5,17 @@ import { PermissionsAndroid, Platform } from "react-native";
 import { BleManager, Device, Subscription } from "react-native-ble-plx";
 import {
   ACTION,
+  Broadcast,
+  broadcastName,
   buildClaim,
   buildCommand,
+  decodeBroadcast,
   deriveKey,
+  DEVICE_POWER,
   fromBase64,
   maskNewKey,
   OP,
+  parseBroadcast,
   parseConfig,
   parseInfo,
   parseNonce,
@@ -31,10 +36,20 @@ type Session = {
   waiters: Map<string, (code: number) => void>;
   queue: Promise<unknown>;
   subs: Subscription[];
+  /** Opened just for a command (Cerbo): the board stays out of range-tracking and is let go after. */
+  transient: boolean;
+  users: number;
+  idle?: ReturnType<typeof setTimeout>;
 };
 
 const STORAGE_KEY = "knownBoards";
 const RESPONSE_TIMEOUT_MS = 2500;
+const BROADCAST_STALE_MS = 20000;
+const TRANSIENT_IDLE_MS = 3000;
+/** Readings that fail the passcode check this many times in a row mean a different passcode. */
+const BAD_TAGS_FOR_LOCKED = 3;
+
+const sameUuid = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
 const manager = new BleManager();
 
@@ -66,7 +81,13 @@ export function useVanBle(
   const log = useRef(addMessage);
   log.current = addMessage;
 
-  const patchBoard = useCallback((mac: string, patch: Partial<Board>) => {
+  const broadcastIds = useRef(new Map<string, string>()).current; // Cerbo MAC -> Bluetooth device id
+  const lastIv = useRef(new Map<string, number>()).current;
+  const lastSeen = useRef(new Map<string, number>()).current;
+  const badTags = useRef(new Map<string, number>()).current;
+  const opening = useRef(new Map<string, Promise<Session | undefined>>()).current;
+
+  const patchBoard = useCallback((mac: string, change: Partial<Board> | ((old: Board) => Partial<Board>)) => {
     setBoards((prev) => {
       const old: Board = prev[mac] ?? {
         mac,
@@ -83,6 +104,7 @@ export function useVanBle(
         connected: false,
         authOk: null,
       };
+      const patch = typeof change === "function" ? change(old) : change;
       return { ...prev, [mac]: { ...old, ...patch } };
     });
   }, []);
@@ -122,7 +144,7 @@ export function useVanBle(
       flagsOnBoard: config.flagsOnBoard,
       targets: config.targets,
       state,
-      connected: true,
+      ...(s.transient ? {} : { connected: true }),
     });
     return info;
   };
@@ -200,13 +222,18 @@ export function useVanBle(
     sessions.delete(deviceId);
     s.subs.forEach((sub) => sub.remove());
     s.waiters.forEach((done) => done(RESP.timeout));
+    clearTimeout(s.idle);
+    if (s.transient) return;
     patchBoard(s.mac, { connected: false, authOk: null });
     log.current(`Lost ${s.mac}`);
   };
 
-  const connect = async (device: Device) => {
-    const id = device.id;
-    if (connecting.has(id) || sessions.has(id)) return;
+  const connect = async (
+    id: string,
+    label: string,
+    transient = false
+  ): Promise<Session | undefined> => {
+    if (connecting.has(id) || sessions.has(id)) return sessions.get(id);
     connecting.add(id);
     try {
       await manager.connectToDevice(id, { requestMTU: 185, timeout: 10000 });
@@ -221,6 +248,8 @@ export function useVanBle(
         waiters: new Map(),
         queue: Promise.resolve(),
         subs: [],
+        transient,
+        users: 0,
       };
       sessions.set(id, s);
       s.subs.push(
@@ -247,18 +276,88 @@ export function useVanBle(
       );
       await refreshNonce(s);
       await refreshBoard(s);
-      log.current(`Connected to ${device.name ?? info.mac}`);
+      if (!transient) log.current(`Connected to ${label}`);
       if (info.claimed) await verify(s);
+      return s;
     } catch (e) {
-      log.current(`Could not connect to ${device.name ?? id}: ${e}`);
+      log.current(`Could not connect to ${label}: ${e}`);
       dropSession(id);
       manager.cancelDeviceConnection(id).catch(() => undefined);
+      return undefined;
     } finally {
       connecting.delete(id);
     }
   };
-  const connectRef = useRef(connect);
-  connectRef.current = connect;
+  /** A Cerbo only takes a connection for commands: open one on demand and let it go once idle. */
+  const withSession = async <T,>(
+    mac: string,
+    run: (s: Session) => Promise<T>
+  ): Promise<T | undefined> => {
+    let s = sessionFor(mac);
+    if (!s) {
+      const deviceId = broadcastIds.get(mac);
+      if (!deviceId) return undefined;
+      let pending = opening.get(mac);
+      if (!pending) {
+        pending = connect(deviceId, mac, true).finally(() => opening.delete(mac));
+        opening.set(mac, pending);
+      }
+      s = await pending;
+      if (!s) return undefined;
+    }
+    if (!s.transient) return run(s);
+    const session = s;
+    session.users++;
+    clearTimeout(session.idle);
+    try {
+      return await run(session);
+    } finally {
+      session.users--;
+      if (session.users === 0)
+        session.idle = setTimeout(() => {
+          manager.cancelDeviceConnection(session.deviceId).catch(() => undefined);
+          dropSession(session.deviceId);
+        }, TRANSIENT_IDLE_MS);
+    }
+  };
+
+  const handleBroadcast = (deviceId: string, b: Broadcast) => {
+    broadcastIds.set(b.mac, deviceId);
+    lastSeen.set(b.mac, Date.now());
+    const pageKey = `${b.mac}:${b.page}`;
+    if (lastIv.get(pageKey) === b.iv) return;
+    lastIv.set(pageKey, b.iv);
+
+    const name = broadcastName(b);
+    const key = keyRef.current;
+    const power = b.claimed && key && name === null ? decodeBroadcast(key, b) : null;
+    if (power) badTags.set(b.mac, 0);
+    else if (b.claimed && key && name === null)
+      badTags.set(b.mac, (badTags.get(b.mac) ?? 0) + 1);
+    const locked = (badTags.get(b.mac) ?? 0) >= BAD_TAGS_FOR_LOCKED;
+
+    patchBoard(b.mac, (old) => ({
+      type: DEVICE_POWER,
+      claimed: b.claimed,
+      connected: true,
+      name: name ?? (old.name || "Cerbo GX"),
+      authOk: !b.claimed || !key ? null : power ? true : locked ? false : old.authOk,
+      ...(power
+        ? { power: { ...old.power, ...power }, powerAt: Date.now() }
+        : {}),
+    }));
+  };
+
+  const onScan = (device: Device) => {
+    if (device.serviceUUIDs?.some((u) => sameUuid(u, UUID.service))) {
+      connect(device.id, device.name ?? device.id);
+      return;
+    }
+    const b = parseBroadcast(device.manufacturerData);
+    if (b) handleBroadcast(device.id, b);
+  };
+  const scanRef = useRef(onScan);
+  scanRef.current = onScan;
 
   // Remembered boards show up (greyed out) before they are back in range.
   useEffect(() => {
@@ -277,6 +376,8 @@ export function useVanBle(
                   names: b.names ?? [],
                   flags: b.flags ?? [],
                   targets: b.targets ?? [],
+                  power: undefined,
+                  powerAt: undefined,
                   connected: false,
                   authOk: null,
                   state: 0,
@@ -299,6 +400,8 @@ export function useVanBle(
         authOk: null,
         state: 0,
         ota: false,
+        power: undefined,
+        powerAt: undefined,
       }))
     );
     if (json === savedJson.current) return;
@@ -320,14 +423,11 @@ export function useVanBle(
         const on = state === "PoweredOn";
         setBluetoothOn(on);
         if (!on) return;
-        manager.startDeviceScan(
-          [UUID.service],
-          { allowDuplicates: true },
-          (error, device) => {
-            if (error) log.current(`Scan error: ${error.message}`);
-            else if (device) connectRef.current(device);
-          }
-        );
+        // No service filter: a Cerbo's broadcast has no room for the service UUID.
+        manager.startDeviceScan(null, { allowDuplicates: true }, (error, device) => {
+          if (error) log.current(`Scan error: ${error.message}`);
+          else if (device) scanRef.current(device);
+        });
       }, true);
     })();
     return () => {
@@ -341,9 +441,39 @@ export function useVanBle(
     };
   }, []);
 
+  // A Cerbo that stops broadcasting has gone out of range.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setBoards((prev) => {
+        const gone = Object.values(prev).filter(
+          (b) =>
+            b.type === DEVICE_POWER &&
+            b.connected &&
+            now - (lastSeen.get(b.mac) ?? 0) > BROADCAST_STALE_MS
+        );
+        if (gone.length === 0) return prev;
+        const next = { ...prev };
+        for (const b of gone) next[b.mac] = { ...b, connected: false, authOk: null };
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   // New passcode on the phone: recheck it against every connected board.
   useEffect(() => {
     keyRef.current = passcode ? deriveKey(passcode) : null;
+    badTags.clear();
+    lastIv.clear();
+    setBoards((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([mac, b]) => [
+          mac,
+          b.type === DEVICE_POWER ? { ...b, authOk: null, power: undefined, powerAt: undefined } : b,
+        ])
+      )
+    );
     sessions.forEach((s) => {
       patchBoard(s.mac, { authOk: null });
       verify(s);
@@ -352,13 +482,16 @@ export function useVanBle(
 
   /** Sends a command signed with the phone's passcode. Resolves true if the board accepted it. */
   const send = async (mac: string, op: number, args: Args, what: string, quiet = false) => {
-    const s = sessionFor(mac);
     const key = keyRef.current;
-    if (!s || !key) {
-      if (!quiet) log.current(`${what}: ${s ? "no passcode set" : "board not in range"}`);
+    if (!key) {
+      if (!quiet) log.current(`${what}: no passcode set`);
       return false;
     }
-    const code = await sendWithKey(s, key, op, args);
+    const code = await withSession(mac, (s) => sendWithKey(s, key, op, args));
+    if (code === undefined) {
+      if (!quiet) log.current(`${what}: board not in range`);
+      return false;
+    }
     if (code === RESP.badAuth) patchBoard(mac, { authOk: false });
     if (code !== RESP.ok && !quiet) log.current(`${what}: ${respText(code)}`);
     return code === RESP.ok;
@@ -372,8 +505,7 @@ export function useVanBle(
     quiet = false
   ) => {
     const ok = await send(mac, op, args, what, quiet);
-    const s = sessionFor(mac);
-    if (ok && s) await refreshBoard(s).catch(() => undefined);
+    if (ok) await withSession(mac, (s) => refreshBoard(s)).catch(() => undefined);
     return ok;
   };
 
@@ -382,33 +514,40 @@ export function useVanBle(
 
   /** Gives a board with no passcode the phone's passcode. */
   const claim = async (mac: string) => {
-    const s = sessionFor(mac);
     const key = keyRef.current;
-    if (!s || !key) return false;
-    const run = () => {
-      const counter = ++s.counter;
-      return writeAndWait(s, buildClaim(counter, key), counter);
-    };
-    const result = s.queue.then(run, run);
-    s.queue = result.catch(() => undefined);
-    const code = await result;
-    if (code !== RESP.ok) log.current(`Set passcode: ${respText(code)}`);
-    await refreshBoard(s).catch(() => undefined);
-    await verify(s);
+    if (!key) return false;
+    const code = await withSession(mac, async (s) => {
+      const run = () => {
+        const counter = ++s.counter;
+        return writeAndWait(s, buildClaim(counter, key), counter);
+      };
+      const result = s.queue.then(run, run);
+      s.queue = result.catch(() => undefined);
+      const c = await result;
+      await refreshBoard(s).catch(() => undefined);
+      await verify(s);
+      return c;
+    });
+    if (code === undefined) log.current("Set passcode: board not in range");
+    else if (code !== RESP.ok) log.current(`Set passcode: ${respText(code)}`);
     return code === RESP.ok;
   };
 
   /** Moves a board from another passcode to the phone's passcode. */
   const adoptFromPasscode = async (mac: string, currentPasscode: string) => {
-    const s = sessionFor(mac);
     const key = keyRef.current;
-    if (!s || !key) return false;
+    if (!key) return false;
     const oldKey = deriveKey(currentPasscode);
-    const code = await sendWithKey(s, oldKey, OP.setPasscode, (counter) =>
-      maskNewKey(oldKey, s.nonce, counter, key)
-    );
-    if (code !== RESP.ok) log.current(`Change passcode: ${respText(code)}`);
-    await verify(s);
+    const code = await withSession(mac, async (s) => {
+      const c = await sendWithKey(s, oldKey, OP.setPasscode, (counter) =>
+        maskNewKey(oldKey, s.nonce, counter, key)
+      );
+      await verify(s);
+      return c;
+    });
+    if (code === undefined) log.current("Change passcode: board not in range");
+    else if (code !== RESP.ok) log.current(`Change passcode: ${respText(code)}`);
+    if (code === RESP.ok) badTags.set(mac, 0);
     return code === RESP.ok;
   };
 

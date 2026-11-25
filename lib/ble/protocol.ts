@@ -16,6 +16,8 @@ export const UUID = {
 
 export const DEVICE_RELAY = 1;
 export const DEVICE_PANEL = 2;
+/** A Cerbo GX: broadcasts battery and inverter readings, readable with the passcode. */
+export const DEVICE_POWER = 3;
 
 export const OP = {
   setRelay: 0x01,
@@ -259,6 +261,153 @@ export function parseConfig(
     return macHex?.length === 12 ? { mac: macHex, relay: Number(relay) } : null;
   });
   return { name, names: [], flags: [], flagsOnBoard: false, targets };
+}
+
+// ---- power broadcasts (Cerbo GX) ----
+// Manufacturer data 0xFFFF: 'V', version<<5 | claimed<<4 | page, mac(6), iv(3), then
+// pages 0-2: body(11) xor HMAC(key, "VSB" mac iv page), tag(2) = HMAC(key, "VST" mac iv page body)
+// page 3: the name in plain text.
+
+const BROADCAST_COMPANY = 0xffff;
+const BROADCAST_MAGIC = 0x56;
+const BROADCAST_VERSION = 1;
+const PAGE_NAME = 3;
+const BODY_LEN = 11;
+
+export type Power = {
+  soc?: number;
+  volts?: number;
+  batteryWatts?: number;
+  acInWatts?: number;
+  acOutWatts?: number;
+  systemState?: number;
+  amps?: number;
+  minutesLeft?: number;
+  batteryTemp?: number;
+  acInL1?: number;
+  acOutL1?: number;
+  acInSource?: number;
+  mode?: number;
+  pvWatts?: number;
+  dcWatts?: number;
+  inverterAlarms?: number;
+  batteryAlarms?: number;
+  vebusError?: number;
+  acInLimit?: number;
+};
+
+export type Broadcast = {
+  mac: string;
+  claimed: boolean;
+  page: number;
+  iv: number;
+  raw: Uint8Array;
+};
+
+export function parseBroadcast(manufacturerData: string | null | undefined): Broadcast | null {
+  if (!manufacturerData) return null;
+  const b = fromBase64(manufacturerData);
+  if (b.length < 14 || b[0] !== (BROADCAST_COMPANY & 255) || b[1] !== BROADCAST_COMPANY >> 8) return null;
+  if (b[2] !== BROADCAST_MAGIC || b[3] >> 5 !== BROADCAST_VERSION) return null;
+  return {
+    mac: toHex(b.slice(4, 10)),
+    claimed: ((b[3] >> 4) & 1) === 1,
+    page: b[3] & 15,
+    iv: b[10] | (b[11] << 8) | (b[12] << 16),
+    raw: b.slice(4),
+  };
+}
+
+export function broadcastName(b: Broadcast): string | null {
+  return b.page === PAGE_NAME ? utf8Decode(b.raw.slice(9)) : null;
+}
+
+/** null: not a readings page, or the tag does not match this key (wrong passcode). */
+export function decodeBroadcast(key: Uint8Array, b: Broadcast): Power | null {
+  if (b.page === PAGE_NAME || b.raw.length < 9 + BODY_LEN + 2) return null;
+  const nonce = concat(b.raw.slice(0, 9), Uint8Array.of(b.page));
+  const body = b.raw.slice(9, 9 + BODY_LEN);
+  const tag = b.raw.slice(9 + BODY_LEN, 9 + BODY_LEN + 2);
+  const expected = mac(key, "VST", concat(nonce, body));
+  if (expected[0] !== tag[0] || expected[1] !== tag[1]) return null;
+  const stream = mac(key, "VSB", nonce);
+  return readPage(b.page, body.map((x, i) => x ^ stream[i]));
+}
+
+function readPage(page: number, p: Uint8Array): Power {
+  const v = new DataView(p.buffer, p.byteOffset, p.byteLength);
+  const u16 = (at: number, scale = 1) => {
+    const n = v.getUint16(at, true);
+    return n === 0xffff ? undefined : n / scale;
+  };
+  const i16 = (at: number, scale = 1) => {
+    const n = v.getInt16(at, true);
+    return n === 0x7fff ? undefined : n / scale;
+  };
+  const u8 = (at: number) => (p[at] === 0xff ? undefined : p[at]);
+  const i8 = (at: number) => (p[at] === 0x7f ? undefined : v.getInt8(at));
+  if (page === 0) {
+    const state = u8(10);
+    return {
+      soc: u16(0, 10),
+      volts: u16(2, 100),
+      batteryWatts: i16(4),
+      acInWatts: i16(6),
+      acOutWatts: i16(8),
+      systemState: state !== undefined && state >= 0xf0 ? 0x100 + state - 0xf0 : state,
+    };
+  }
+  if (page === 1)
+    return {
+      amps: i16(0, 10),
+      minutesLeft: u16(2),
+      batteryTemp: i8(4),
+      acInL1: i16(5),
+      acOutL1: i16(7),
+      acInSource: u8(9),
+      mode: u8(10),
+    };
+  return {
+    pvWatts: i16(0),
+    dcWatts: i16(2),
+    inverterAlarms: v.getUint16(4, true),
+    batteryAlarms: v.getUint16(6, true) | (p[8] << 16),
+    vebusError: u8(9),
+    acInLimit: u8(10),
+  };
+}
+
+/** Each alarm takes two bits: 0 ok, 1 warning, 2 alarm. Names in the Cerbo's order. */
+export const INVERTER_ALARMS = [
+  "Low battery",
+  "Overload",
+  "High temperature",
+  "Ripple",
+  "Temperature sensor",
+  "Voltage sensor",
+  "High DC voltage",
+  "High DC current",
+];
+export const BATTERY_ALARMS = [
+  "Low voltage",
+  "High voltage",
+  "Low SOC",
+  "Low cell voltage",
+  "High charge current",
+  "High discharge current",
+  "High temperature",
+  "Low temperature",
+  "High charge temperature",
+  "Low charge temperature",
+  "Cell imbalance",
+  "Internal failure",
+];
+
+export function activeAlarms(bits: number | undefined, names: string[]) {
+  if (!bits) return [];
+  return names
+    .map((name, i) => ({ name, level: (bits >>> (2 * i)) & 3 }))
+    .filter((a) => a.level > 0);
 }
 
 export function respText(code: number): string {

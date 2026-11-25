@@ -14,10 +14,12 @@ import DraggableFlatList, {
 } from "react-native-draggable-flatlist";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Button, IconName } from "@/components/Button";
+import { PowerBar } from "@/components/PowerBar";
 import { RelayTile } from "@/components/RelayTile";
 import { PromptSheet } from "@/components/Sheet";
 import { ConfirmToggleSheet, SwitchSettingsSheet } from "@/components/SwitchSettingsSheet";
 import {
+  DEVICE_POWER,
   DEVICE_RELAY,
   MAX_NAME_LENGTH,
   MIN_PASSCODE_LENGTH,
@@ -26,6 +28,7 @@ import {
   utf8Encode,
 } from "@/lib/ble/protocol";
 import { Board, boardStatus } from "@/lib/ble/types";
+import { powerBoard } from "@/lib/power";
 import { ButtonPref } from "@/lib/storage";
 import { color, radius, readable, space, type } from "@/lib/theme";
 import { useVan } from "@/lib/VanContext";
@@ -59,6 +62,8 @@ export default function Home() {
     boards[b.mac]?.names[b.index] ?? `relay ${b.index + 1}`;
   const shown = buttons.filter((b) => !b.hidden && boards[b.mac]);
   const hiddenCount = buttons.filter((b) => b.hidden).length;
+  const cerbo = powerBoard(boards);
+  const showPower = !editing && !!cerbo?.power && boardStatus(cerbo) === "ready";
 
   const headerButton = (
     icon: IconName,
@@ -142,8 +147,10 @@ export default function Home() {
             notice(
               b.mac,
               "plus-circle-outline",
-              `New board: ${b.name}`,
-              "It has no passcode yet. Adding it gives it yours, so this phone and any other with the passcode can use it.",
+              `New ${b.type === DEVICE_POWER ? "Cerbo" : "board"}: ${b.name}`,
+              b.type === DEVICE_POWER
+                ? "Adding it gives it your passcode, so phones with the passcode can read its battery and inverter."
+                : "It has no passcode yet. Adding it gives it yours, so this phone and any other with the passcode can use it.",
               "Add to my van",
               () => van.claim(b.mac)
             )
@@ -259,7 +266,7 @@ export default function Home() {
   const settingsBoard = settingsItem ? boards[settingsItem.mac] : undefined;
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: showPower ? 0 : insets.bottom }]}>
       <View style={styles.header}>
         <Text style={type.title}>{editing ? "Arrange" : "Van"}</Text>
         <View style={styles.headerButtons}>
@@ -316,6 +323,10 @@ export default function Home() {
           }
         />
       )}
+
+      {showPower && cerbo ? (
+        <PowerBar board={cerbo} bottomInset={insets.bottom} onPress={() => router.push("/power")} />
+      ) : null}
 
       <PromptSheet
         visible={askPasscode}
